@@ -25,16 +25,14 @@ const Navbar = () => {
   }, [totalItems, isCartOpen]);
 
   const handleNavigate = () => {
-    //console.log("Handle Navigate", role);
-
     if (role === "restaurant") {
-      navigate("/restaurant-dashboard", { state: { activeTab: "settings" } });
+      navigate("/restaurant-dashboard", { state: { activeTab: "overview" } });
     } else if (role === "rider") {
-      navigate("/rider-dashboard", { state: { activeTab: "settings" } });
+      navigate("/rider-dashboard", { state: { activeTab: "overview" } });
     } else if (role === "admin") {
-      navigate("/admin-dashboard", { state: { activeTab: "settings" } });
+      navigate("/admin-dashboard", { state: { activeTab: "overview" } });
     } else {
-      navigate("/customer-dashboard", { state: { activeTab: "settings" } });
+      navigate("/customer-dashboard", { state: { activeTab: "overview" } });
     }
   };
 

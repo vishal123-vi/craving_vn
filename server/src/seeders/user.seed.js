@@ -84,7 +84,7 @@ const userSeed = async () => {
         gender: "male",
         userType: "admin",
         phone: "9876543210",
-        photo: { url: "https://placehold.co/600x400?text=R", publicId: null },
+        photo: { url: "https://placehold.co/600x400?text=A", publicId: null },
       },
     ];
 

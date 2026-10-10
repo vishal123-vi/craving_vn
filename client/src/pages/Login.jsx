@@ -63,14 +63,16 @@ const Login = () => {
       //console.log(res.data.data.userType);
       setRole(res.data.data.userType);
 
-      res.data.data.userType === "restaurant" &&
+      const userType = res.data.data.userType;
+      if (userType === "restaurant") {
         navigate("/restaurant-dashboard");
-
-      res.data.data.userType === "rider" && navigate("/rider-dashboard");
-
-      res.data.data.userType === "admin" && navigate("/admin-dashboard");
-
-      res.data.data.userType === "customer" && navigate("/customer-dashboard");
+      } else if (userType === "rider") {
+        navigate("/rider-dashboard");
+      } else if (userType === "admin") {
+        navigate("/admin-dashboard");
+      } else {
+        navigate("/customer-dashboard");
+      }
     } catch (error) {
       toast.error(
         error.response?.data?.message ||

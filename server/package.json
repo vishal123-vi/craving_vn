@@ -10,7 +10,7 @@
     "seed": "node ./src/seeders/seed.js"
   },
   "keywords": [],
-  "author": "Raj Gupta",
+  "author": "Vishal Tiwari",
   "license": "ISC",
   "type": "module",
   "dependencies": {

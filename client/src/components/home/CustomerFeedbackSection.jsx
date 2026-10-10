@@ -89,11 +89,11 @@ const CustomerFeedbackSection = () => {
             </p>
             <div className="flex items-center gap-3">
               <div className="w-12 h-12 rounded-full bg-(--color-primary) flex items-center justify-center text-white font-bold">
-                RK
+                RS
               </div>
               <div>
                 <p className="font-semibold text-(--color-content)">
-                  Raj Kumar
+                  Rahul Sharma
                 </p>
                 <p className="text-sm text-(--color-base-content)">
                   Verified Buyer

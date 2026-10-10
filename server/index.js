@@ -14,6 +14,7 @@ import customerRouter from "./src/router/customer.route.js";
 import adminRouter from "./src/router/admin.route.js";
 import PoolRouter from "./src/router/pool.route.js";
 import PaymentRouter from "./src/router/payment.route.js";
+import OrderRouter from "./src/router/order.route.js";
 
 const app = express();
 
@@ -32,7 +33,6 @@ app.use(cookieParser());
 
 app.use(morgan("dev"));
 
-import OrderRouter from "./src/router/order.route.js";
 
 app.use("/auth", AuthRouter);
 app.use("/public", PublicRouter);
@@ -67,11 +67,14 @@ app.listen(port, async () => {
   console.log("Server Started on port:", port);
   connectDB();
   try {
-    const result = await cloudinary.api.ping();
-    console.log("Cloudinary Connected :");
-    console.log(result);
+    if (process.env.CLOUDINARY_CLOUD_NAME && process.env.CLOUDINARY_API_KEY) {
+      const result = await cloudinary.api.ping();
+      console.log("Cloudinary Connected :");
+      console.log(result);
+    } else {
+      console.log("Cloudinary credentials not provided in .env (image uploads will be limited).");
+    }
   } catch (error) {
-    console.log(error.message);
-    process.exit(1);
+    console.warn("Cloudinary Connection Warning:", error.message);
   }
 });

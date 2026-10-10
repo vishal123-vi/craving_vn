@@ -75,8 +75,8 @@ export const FeedbackForm = async (req, res, next) => {
 
 export const getRestaurants = async (req, res, next) => {
   try {
+    // Show all open restaurants to customers regardless of status
     const restaurants = await Restaurant.find({ 
-      status: "active",
       isOpen: true 
     }).select("-documents -financialDetails -contactDetails");
     
@@ -174,7 +174,8 @@ export const getDishReviews = async (req, res, next) => {
 
 export const GetAllRestaurants = async (req, res, next) => {
   try {
-    const restaurants = await Restaurant.find({ status: "active", isOpen: true });
+    // Admin sees ALL restaurants regardless of status or open/closed
+    const restaurants = await Restaurant.find({});
     res.status(200).json({ data: restaurants });
   } catch (error) {
     next(error);

@@ -138,7 +138,7 @@ const Footer = () => {
         <div className="flex flex-col md:flex-row justify-between items-center">
           {/* Copyright */}
           <p className="text-sm text-(--color-neutral-content) mb-4 md:mb-0">
-            &copy; {currentYear} Raj Cravings. All rights reserved.
+            &copy; {currentYear} Cravings by Vishal Tiwari. All rights reserved.
           </p>
 
           {/* Legal Links */}
