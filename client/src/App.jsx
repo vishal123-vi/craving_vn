@@ -20,6 +20,7 @@ const TermsOfService = lazy(() => import("./pages/TermsOfService"));
 const SiteMap = lazy(() => import("./pages/SiteMap"));
 const OrderConfirmation = lazy(() => import("./pages/OrderConfirmation"));
 const OrderTracking = lazy(() => import("./pages/OrderTracking"));
+const ProfilePage = lazy(() => import("./pages/ProfilePage"));
 
 // Heavy dashboard bundles
 const CustomerDashboard = lazy(() => import("./pages/dashboard/CustomerDashboard"));
@@ -48,6 +49,7 @@ const App = () => {
     "/restaurant-dashboard",
     "/rider-dashboard",
     "/admin-dashboard",
+    "/profile",
   ];
   const shouldShowFooter = !hideFooterRoutes.includes(location.pathname);
 
@@ -66,6 +68,7 @@ const App = () => {
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
           <Route path="/register/:userType" element={<Register />} />
+          <Route path="/profile" element={<ProfilePage />} />
           <Route path="/customer-dashboard" element={<CustomerDashboard />} />
           <Route path="/restaurant-dashboard" element={<RestaurantDashboard />} />
           <Route path="/rider-dashboard" element={<RiderDashboard />} />

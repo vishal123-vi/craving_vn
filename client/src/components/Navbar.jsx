@@ -64,7 +64,7 @@ const Navbar = () => {
     } else if (role === "admin") {
       navigate("/admin-dashboard", { state: { activeTab: "overview" } });
     } else {
-      navigate("/customer-dashboard", { state: { activeTab: "overview" } });
+      navigate("/profile");
     }
   };
 

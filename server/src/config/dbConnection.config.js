@@ -1,4 +1,12 @@
 import mongoose from "mongoose";
+import dns from "node:dns";
+
+// Ensure Atlas mongodb+srv DNS resolution works across all ISP networks
+try {
+  dns.setServers(["8.8.8.8", "1.1.1.1"]);
+} catch (e) {
+  // Ignore in environments where custom DNS servers cannot be set
+}
 
 const connectDB = async () => {
   try {
