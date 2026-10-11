@@ -96,7 +96,7 @@ Both `client` and `server` include `.env.example` templates. Default development
 #### Server (`server/.env`):
 ```env
 PORT=5000
-MONGO_DB_URI=mongodb://127.0.0.1:27017/CravingsFSD08_DB
+MONGO_DB_URI=mongodb://127.0.0.1:27017/cravings_vn
 JWT_SECRET=cravings_dev_secret_key_2026
 
 # Optional for external integrations:

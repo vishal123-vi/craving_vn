@@ -43,6 +43,7 @@ const OrderSchema = mongoose.Schema(
         "delivered",
         "cancelled",
         "failed",
+        "payment_failed",
         "rejected",
       ],
       default: "pending",
@@ -88,17 +89,18 @@ const OrderSchema = mongoose.Schema(
       type: {
         paymentMethod: {
           type: String,
-          enum: ["card", "upi"],
+          enum: ["card", "upi", "cod", "test"],
           required: true,
         },
         paymentStatus: {
           type: String,
-          enum: ["pending", "completed", "failed"],
+          enum: ["pending", "completed", "failed", "cancelled"],
           default: "pending",
         },
         razorpayOrderId: { type: String, required: false },
         razorpayPaymentId: { type: String, required: false, sparse: true, unique: true },
         razorpaySignature: { type: String, required: false },
+        razorpayQrId: { type: String, required: false },
         paidAt: { type: Date, required: false },
       },
     },

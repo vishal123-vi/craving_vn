@@ -20,6 +20,8 @@ import RestaurantDetailsPage from "./pages/RestaurantDetailsPage";
 import PrivacyPolicy from "./pages/PrivacyPolicy";
 import TermsOfService from "./pages/TermsOfService";
 import SiteMap from "./pages/SiteMap";
+import OrderConfirmation from "./pages/OrderConfirmation";
+import OrderTracking from "./pages/OrderTracking";
 
 
 const App = () => {
@@ -61,6 +63,8 @@ const App = () => {
           path="/restaurant-details/:restaurantId"
           element={<RestaurantDetailsPage />}
         />
+        <Route path="/order-confirmation/:orderId" element={<OrderConfirmation />} />
+        <Route path="/order-track/:orderId" element={<OrderTracking />} />
         <Route path="/privacy-policy" element={<PrivacyPolicy />} />
         <Route path="/terms-of-service" element={<TermsOfService />} />
         <Route path="/site-map" element={<SiteMap />} />

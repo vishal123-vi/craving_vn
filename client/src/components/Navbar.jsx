@@ -9,6 +9,10 @@ import api from "../config/ApiConfig";
 import { useCart } from "../context/CartContext";
 import { loadRazorpayScript } from "../utils/loadRazorpay";
 import ReceiptModal from "./payment/ReceiptModal";
+import AddressSelectorModal from "./customer/AddressSelectorModal";
+import SandboxPaymentModal from "./payment/SandboxPaymentModal";
+import UpiPaymentModal from "./payment/UpiPaymentModal";
+import { IoLocationOutline } from "react-icons/io5";
 
 const Navbar = () => {
   const { user, isLogin, role, setUser, setIsLogin, setRole } = useAuth();
@@ -17,6 +21,34 @@ const Navbar = () => {
   const [isCartOpen, setIsCartOpen] = React.useState(false);
   const [isCheckingOut, setIsCheckingOut] = React.useState(false);
   const [receiptData, setReceiptData] = React.useState(null);
+
+  const [selectedPaymentMethod, setSelectedPaymentMethod] = React.useState("cod"); // "cod" | "upi" | "card"
+  const [selectedAddress, setSelectedAddress] = React.useState(null);
+  const [isAddressModalOpen, setIsAddressModalOpen] = React.useState(false);
+  const [sandboxOrderData, setSandboxOrderData] = React.useState(null);
+  const [upiOrderData, setUpiOrderData] = React.useState(null);
+  const [upiQrData, setUpiQrData] = React.useState(null);
+  const [isGatewayConfigured, setIsGatewayConfigured] = React.useState(false);
+  const [currentPaymentData, setCurrentPaymentData] = React.useState(null);
+
+  // Fetch user default address on load
+  React.useEffect(() => {
+    const fetchDefaultAddress = async () => {
+      if (isLogin && role === "customer") {
+        try {
+          const res = await api.get("/customer/profile");
+          if (res.data?.success && res.data.data?.addressBook?.length > 0) {
+            const list = res.data.data.addressBook;
+            const def = list.find((a) => a.isDefault) || list[0];
+            setSelectedAddress(def);
+          }
+        } catch (err) {
+          console.error("Default address fetch error:", err);
+        }
+      }
+    };
+    fetchDefaultAddress();
+  }, [isLogin, role]);
 
   React.useEffect(() => {
     if (totalItems === 0 && isCartOpen) {
@@ -49,22 +81,126 @@ const Navbar = () => {
     } catch (error) {
       toast.error(
         error.response?.data?.message ||
-        "Unknown error occurred during registration. Please try again.",
+        "Unknown error occurred during logout. Please try again.",
       );
     }
   };
 
+  // Pricing calculations
+  const platformFee = 5;
+  const deliveryFee = totalAmount >= 300 ? 0 : 30;
+  const taxAmount = Math.round(totalAmount * 0.05);
+  const grandTotal = totalAmount + platformFee + deliveryFee + taxAmount;
+
+  const launchRazorpayCheckout = async (appOrderId, paymentData, isUpi = false) => {
+    const loaded = await loadRazorpayScript();
+    if (!loaded) {
+      toast.error("Razorpay SDK failed to load. Are you online?");
+      setIsCheckingOut(false);
+      return;
+    }
+
+    const options = {
+      key: paymentData.key,
+      amount: paymentData.amount,
+      currency: paymentData.currency || "INR",
+      name: "Cravings Delivery",
+      description: isUpi ? "UPI QR Food Order Payment" : "Food Order Payment",
+      order_id: paymentData.razorpayOrderId,
+
+      handler: async function (response) {
+        try {
+          await api.post("/payment/verify", {
+            orderId: appOrderId,
+            razorpay_order_id: response.razorpay_order_id,
+            razorpay_payment_id: response.razorpay_payment_id,
+            razorpay_signature: response.razorpay_signature,
+          });
+
+          toast.success("Payment verified! Order placed. 🎉");
+          setIsCartOpen(false);
+          setUpiOrderData(null);
+          setSandboxOrderData(null);
+          clearCart();
+          navigate(`/order-confirmation/${appOrderId}`);
+        } catch (err) {
+          toast.error(err.response?.data?.message || "Payment cryptographic verification failed");
+        }
+      },
+      prefill: {
+        name: selectedAddress?.name || user?.fullName || "Customer",
+        email: user?.email || "customer@example.com",
+        contact: user?.phone || "9999999999",
+        ...(isUpi ? { method: "upi" } : {}),
+      },
+      theme: { color: "#ea580c" },
+      modal: {
+        ondismiss: async () => {
+          try {
+            await api.post("/payment/cancel", {
+              orderId: appOrderId,
+              reason: "Customer closed payment modal",
+            });
+          } catch (ignore) {}
+          toast.error("Payment modal cancelled");
+        },
+      },
+    };
+
+    if (isUpi) {
+      options.config = {
+        display: {
+          blocks: {
+            upi: {
+              name: "Pay using UPI / QR Code",
+              instruments: [
+                {
+                  method: "upi",
+                  flows: ["qr", "intent", "collect"],
+                },
+              ],
+            },
+          },
+          sequence: ["block.upi"],
+          preferences: {
+            show_default_blocks: false,
+          },
+        },
+      };
+    }
+
+    const rzp = new window.Razorpay(options);
+
+    rzp.on("payment.failed", async function (response) {
+      try {
+        await api.post("/payment/cancel", {
+          orderId: appOrderId,
+          reason: response.error?.description || "Payment failed",
+        });
+      } catch (ignore) {}
+      toast.error(`Payment failed: ${response.error?.description}`);
+    });
+
+    rzp.open();
+  };
+
   const handlePlaceOrder = async () => {
     if (!isLogin) {
-      toast.error("Please login first");
+      toast.error("Please login first to place an order");
+      navigate("/login");
       return;
     }
     if (role !== "customer") {
-      toast.error("Only customers can order");
+      toast.error("Only customer accounts can place orders. Please switch to a customer account.");
       return;
     }
     if (!cart?.length) {
       toast.error("Cart is empty");
+      return;
+    }
+    if (!selectedAddress) {
+      toast.error("Please select a delivery address to proceed.");
+      setIsAddressModalOpen(true);
       return;
     }
 
@@ -72,104 +208,112 @@ const Navbar = () => {
       setIsCheckingOut(true);
 
       const restaurantId = cart[0].item.restaurantId;
-      
-      // Attempt to get user's live geolocation
-      const getGeoLocation = () => {
-        return new Promise((resolve) => {
-          if (!navigator.geolocation) {
-            resolve(null);
-          } else {
-            navigator.geolocation.getCurrentPosition(
-              (position) => {
-                resolve({
-                  lat: position.coords.latitude.toString(),
-                  lon: position.coords.longitude.toString(),
-                });
-              },
-              () => resolve(null),
-              { timeout: 5000, maximumAge: 0, enableHighAccuracy: true }
-            );
-          }
-        });
-      };
-      
-      const geoLocation = await getGeoLocation();
+      const geoLocation = selectedAddress?.geoLocation || { lat: "23.2599", lon: "77.4126" };
 
+      // Case 1: Cash on Delivery (COD)
+      if (selectedPaymentMethod === "cod") {
+        const createOrderRes = await api.post("/order/create", {
+          restaurantId,
+          paymentMethod: "cod",
+          amount: totalAmount,
+          orderItems: cart.map((c) => ({ itemId: c.item._id, quantity: c.quantity })),
+          geoLocation,
+          deliveryAddress: selectedAddress,
+        });
+
+        if (createOrderRes?.data?.success) {
+          const newOrder = createOrderRes.data.data;
+          toast.success("Order placed successfully with Cash on Delivery! 🛵");
+          setIsCartOpen(false);
+          clearCart();
+          navigate(`/order-confirmation/${newOrder._id}`);
+          return;
+        }
+      }
+
+      // Case 2: UPI / QR Code Payment Flow
+      if (selectedPaymentMethod === "upi") {
+        const createOrderRes = await api.post("/order/create", {
+          restaurantId,
+          paymentMethod: "upi",
+          amount: totalAmount,
+          orderItems: cart.map((c) => ({ itemId: c.item._id, quantity: c.quantity })),
+          geoLocation,
+          deliveryAddress: selectedAddress,
+        });
+
+        const appOrderId = createOrderRes?.data?.data?._id;
+        if (!appOrderId) {
+          throw new Error("Failed to create order");
+        }
+
+        const configRes = await api.get("/payment/config-status");
+        const isConfigured = configRes.data?.isConfigured || configRes.data?.configured;
+
+        if (!isConfigured) {
+          // Open UPI Modal in Development Sandbox / Simulator mode
+          setIsGatewayConfigured(false);
+          setUpiQrData(null);
+          setUpiOrderData(createOrderRes.data.data);
+          setIsCartOpen(false);
+          return;
+        }
+
+        // Live/Test Razorpay Gateway configured
+        const paymentOrderRes = await api.post("/payment/create-order", {
+          orderId: appOrderId,
+          isUpi: true,
+        });
+        const paymentData = paymentOrderRes?.data?.data;
+        setCurrentPaymentData(paymentData);
+        setIsGatewayConfigured(true);
+
+        if (paymentData?.qrData?.imageUrl) {
+          // Standalone BharatQR returned
+          setUpiQrData(paymentData.qrData);
+          setUpiOrderData(createOrderRes.data.data);
+          setIsCartOpen(false);
+        } else {
+          // Standard Razorpay Checkout UPI Dynamic QR flow
+          setUpiQrData(null);
+          setUpiOrderData(createOrderRes.data.data);
+          setIsCartOpen(false);
+          launchRazorpayCheckout(appOrderId, paymentData, true);
+        }
+        return;
+      }
+
+      // Case 3: Cards / Netbanking Online Payment
       const createOrderRes = await api.post("/order/create", {
         restaurantId,
-        paymentMethod: "upi",
+        paymentMethod: "card",
         amount: totalAmount,
         orderItems: cart.map((c) => ({ itemId: c.item._id, quantity: c.quantity })),
-        geoLocation
+        geoLocation,
+        deliveryAddress: selectedAddress,
       });
-      
-      const appOrderId = createOrderRes?.data?.data?._id;
 
+      const appOrderId = createOrderRes?.data?.data?._id;
       if (!appOrderId) {
         throw new Error("Failed to create order");
       }
 
-      const paymentOrderRes = await api.post("/payment/create-order", { orderId: appOrderId });
-      const paymentData = paymentOrderRes?.data?.data;
+      const configRes = await api.get("/payment/config-status");
+      const isConfigured = configRes.data?.isConfigured || configRes.data?.configured;
 
-      const loaded = await loadRazorpayScript();
-      if (!loaded) {
-        toast.error("Razorpay SDK failed to load. Are you online?");
-        setIsCheckingOut(false);
+      if (!isConfigured) {
+        setSandboxOrderData(createOrderRes.data.data);
+        setIsCartOpen(false);
         return;
       }
 
-      const options = {
-        key: paymentData.key,
-        amount: paymentData.amount,
-        currency: paymentData.currency,
-        name: "Cravings Delivery",
-        description: "Food Order Payment",
-        order_id: paymentData.razorpayOrderId,
-
-        handler: async function (response) {
-          try {
-            const verifyRes = await api.post("/payment/verify", {
-              orderId: appOrderId,
-              razorpay_order_id: response.razorpay_order_id,
-              razorpay_payment_id: response.razorpay_payment_id,
-              razorpay_signature: response.razorpay_signature,
-            });
-
-            toast.success("Payment successful!");
-            setIsCartOpen(false);
-            setReceiptData({
-              razorpay_order_id: response.razorpay_order_id,
-              razorpay_payment_id: response.razorpay_payment_id,
-              amount: totalAmount,
-              items: cart,
-            });
-            clearCart();
-            navigate("/customer-dashboard");
-          } catch (err) {
-            toast.error(err.response?.data?.message || "Payment verification failed");
-          }
-        },
-        prefill: {
-          name: user?.fullName || user?.name || "Test User",
-          email: user?.email || "test@example.com",
-          contact: user?.phone || "9999999999",
-        },
-        theme: { color: "#ea580c" },
-        modal: {
-          ondismiss: () => toast.error("Payment cancelled"),
-        },
-      };
-
-      const rzp = new window.Razorpay(options);
-
-      rzp.on("payment.failed", function (response) {
-        toast.error(`Payment failed: ${response.error.description}`);
-      });
-
-      rzp.open();
+      const paymentOrderRes = await api.post("/payment/create-order", { orderId: appOrderId, isUpi: false });
+      const paymentData = paymentOrderRes?.data?.data;
+      setCurrentPaymentData(paymentData);
+      setIsCartOpen(false);
+      launchRazorpayCheckout(appOrderId, paymentData, false);
     } catch (error) {
-      toast.error(error.response?.data?.message || "Something went wrong");
+      toast.error(error.response?.data?.message || "Something went wrong placing the order");
     } finally {
       setIsCheckingOut(false);
     }
@@ -307,21 +451,105 @@ const Navbar = () => {
 
             {/* Footer */}
             <div className="p-6 bg-white dark:bg-gray-900 border-t border-gray-200/50 dark:border-gray-800 shadow-[0_-10px_30px_-15px_rgba(0,0,0,0.1)] relative z-10">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-gray-500 dark:text-gray-400 font-medium">Item Total</span>
-                <span className="text-gray-800 dark:text-white font-bold">₹{totalAmount}</span>
+              {/* Delivery Address Pill */}
+              <div className="mb-4 bg-orange-50/60 dark:bg-orange-950/20 p-3 rounded-2xl border border-orange-200/60 dark:border-orange-800/60 flex items-center justify-between gap-3">
+                <div className="flex items-center gap-2.5 overflow-hidden">
+                  <div className="p-2 rounded-xl bg-orange-500 text-white shrink-0">
+                    <IoLocationOutline size={18} />
+                  </div>
+                  <div className="min-w-0">
+                    <span className="text-[10px] uppercase font-bold text-orange-600 dark:text-orange-400 block leading-tight">
+                      Deliver To: {selectedAddress?.addressType || "Address"}
+                    </span>
+                    <p className="text-xs font-bold text-gray-800 dark:text-gray-200 truncate">
+                      {selectedAddress ? `${selectedAddress.name} - ${selectedAddress.address}` : "No address selected"}
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsAddressModalOpen(true)}
+                  className="px-2.5 py-1 bg-white dark:bg-gray-800 text-orange-600 dark:text-orange-400 border border-orange-200 dark:border-orange-700 rounded-xl text-xs font-black shrink-0 hover:bg-orange-50 transition"
+                >
+                  {selectedAddress ? "Change" : "Select"}
+                </button>
               </div>
-              <div className="flex items-center justify-between mb-6 pb-4 border-b border-gray-100 dark:border-gray-800 border-dashed">
-                <span className="text-gray-500 dark:text-gray-400 font-medium text-sm flex items-center gap-1">Delivery Fee <IoCartOutline/></span>
-                <span className="text-green-500 font-bold text-sm tracking-wide uppercase">Free</span>
+
+              {/* Itemized Pricing Breakdown */}
+              <div className="space-y-1.5 text-xs text-gray-500 dark:text-gray-400 pb-3 mb-3 border-b border-gray-100 dark:border-gray-800">
+                <div className="flex justify-between">
+                  <span>Item Subtotal</span>
+                  <span className="font-bold text-gray-800 dark:text-gray-200">₹{totalAmount}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Taxes (5% GST)</span>
+                  <span className="font-bold text-gray-800 dark:text-gray-200">₹{taxAmount}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Platform Fee</span>
+                  <span className="font-bold text-gray-800 dark:text-gray-200">₹{platformFee}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Delivery Charge</span>
+                  <span className="font-bold text-gray-800 dark:text-gray-200">
+                    {deliveryFee === 0 ? <span className="text-green-500 uppercase font-black">Free</span> : `₹${deliveryFee}`}
+                  </span>
+                </div>
               </div>
-              <div className="flex items-center justify-between mb-6">
+
+              {/* Payment Method Selector */}
+              <div className="mb-4 bg-gray-50 dark:bg-gray-800/60 p-3 rounded-2xl border border-gray-100 dark:border-gray-700/60">
+                <span className="block text-[11px] font-black text-gray-400 dark:text-gray-400 uppercase tracking-wider mb-2">
+                  Select Payment Method
+                </span>
+                <div className="grid grid-cols-3 gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => setSelectedPaymentMethod("cod")}
+                    className={`py-2 px-1 rounded-xl border text-[11px] font-black flex flex-col items-center justify-center gap-1 transition-all text-center ${
+                      selectedPaymentMethod === "cod"
+                        ? "bg-orange-500 text-white border-orange-500 shadow-md shadow-orange-500/25 scale-[1.02]"
+                        : "bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border-gray-200 dark:border-gray-700 hover:border-orange-300"
+                    }`}
+                  >
+                    <span className="text-base">💵</span>
+                    <span className="leading-tight">Cash on Delivery</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedPaymentMethod("upi")}
+                    className={`py-2 px-1 rounded-xl border text-[11px] font-black flex flex-col items-center justify-center gap-1 transition-all text-center ${
+                      selectedPaymentMethod === "upi"
+                        ? "bg-orange-500 text-white border-orange-500 shadow-md shadow-orange-500/25 scale-[1.02]"
+                        : "bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border-gray-200 dark:border-gray-700 hover:border-orange-300"
+                    }`}
+                  >
+                    <span className="text-base">📱</span>
+                    <span className="leading-tight">UPI / QR Code</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedPaymentMethod("card")}
+                    className={`py-2 px-1 rounded-xl border text-[11px] font-black flex flex-col items-center justify-center gap-1 transition-all text-center ${
+                      selectedPaymentMethod === "card"
+                        ? "bg-orange-500 text-white border-orange-500 shadow-md shadow-orange-500/25 scale-[1.02]"
+                        : "bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border-gray-200 dark:border-gray-700 hover:border-orange-300"
+                    }`}
+                  >
+                    <span className="text-base">💳</span>
+                    <span className="leading-tight">Cards / NetBank</span>
+                  </button>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between mb-4">
                 <span className="text-gray-800 dark:text-white font-black text-lg">Grand Total</span>
-                <span className="text-2xl font-black text-orange-600 dark:text-orange-400">₹{totalAmount}</span>
+                <span className="text-2xl font-black text-orange-600 dark:text-orange-400">₹{grandTotal}</span>
               </div>
-              <button onClick={handlePlaceOrder} disabled={isCheckingOut} className="w-full bg-linear-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white py-4 rounded-xl font-bold text-lg transition-all shadow-xl shadow-orange-500/25 hover:shadow-orange-500/40 transform hover:-translate-y-0.5 active:translate-y-0 flex items-center justify-center gap-2 group overflow-hidden relative disabled:opacity-50 disabled:cursor-not-allowed">
+
+              <button onClick={handlePlaceOrder} disabled={isCheckingOut} className="w-full bg-linear-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white py-3.5 rounded-xl font-bold text-base transition-all shadow-xl shadow-orange-500/25 hover:shadow-orange-500/40 transform hover:-translate-y-0.5 active:translate-y-0 flex items-center justify-center gap-2 group overflow-hidden relative disabled:opacity-50 disabled:cursor-not-allowed">
                 <span className="relative z-10 flex items-center gap-2">
-                  {isCheckingOut ? "Processing..." : "Place Order"}
+                  {isCheckingOut ? "Processing..." : `Place Order (₹${grandTotal})`}
                   <span className="group-hover:translate-x-1 transition-transform">→</span>
                 </span>
                 {/* Subtle shine effect on button */}
@@ -331,10 +559,46 @@ const Navbar = () => {
           </div>
         </div>
       )}
+      <AddressSelectorModal
+        isOpen={isAddressModalOpen}
+        onClose={() => setIsAddressModalOpen(false)}
+        selectedAddress={selectedAddress}
+        onSelectAddress={(addr) => {
+          setSelectedAddress(addr);
+          setIsAddressModalOpen(false);
+        }}
+      />
       <ReceiptModal 
         isOpen={!!receiptData} 
         onClose={() => setReceiptData(null)} 
         data={receiptData} 
+      />
+      <SandboxPaymentModal
+        isOpen={!!sandboxOrderData}
+        orderData={sandboxOrderData}
+        onClose={() => setSandboxOrderData(null)}
+        onSuccess={(confirmedOrderId) => {
+          setSandboxOrderData(null);
+          clearCart();
+          navigate(`/order-confirmation/${confirmedOrderId}`);
+        }}
+      />
+      <UpiPaymentModal
+        isOpen={!!upiOrderData}
+        orderData={upiOrderData}
+        qrData={upiQrData}
+        isConfigured={isGatewayConfigured}
+        onClose={() => setUpiOrderData(null)}
+        onLaunchRazorpayUpi={() => {
+          if (upiOrderData?._id && currentPaymentData) {
+            launchRazorpayCheckout(upiOrderData._id, currentPaymentData, true);
+          }
+        }}
+        onSuccess={(confirmedOrderId) => {
+          setUpiOrderData(null);
+          clearCart();
+          navigate(`/order-confirmation/${confirmedOrderId}`);
+        }}
       />
     </>
   );

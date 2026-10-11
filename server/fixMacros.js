@@ -1,7 +1,7 @@
 import mongoose from 'mongoose';
 
 async function fixMacros() {
-  await mongoose.connect('mongodb://localhost:27017/CravingsFSD08_DB');
+  await mongoose.connect('mongodb://localhost:27017/cravings_vn');
   console.log('Connected to DB');
 
   const menuSchema = new mongoose.Schema({}, { strict: false });

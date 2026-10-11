@@ -68,24 +68,43 @@ const ReceiptModal = ({ isOpen, onClose, data }) => {
         {/* Scrollable Receipt Area */}
         <div className="overflow-y-auto flex-1 p-6" ref={receiptRef}>
           <div className="text-center mb-6">
-            <div className="w-16 h-16 bg-green-100 dark:bg-green-900/30 text-green-600 rounded-full flex items-center justify-center mx-auto mb-3">
-              <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-              </svg>
+            <div className={`w-16 h-16 ${data.payment_status === 'completed' ? 'bg-green-100 dark:bg-green-900/30 text-green-600' : 'bg-orange-100 dark:bg-orange-900/30 text-orange-600'} rounded-full flex items-center justify-center mx-auto mb-3 shadow-sm`}>
+              {data.payment_status === 'completed' ? (
+                <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                </svg>
+              ) : (
+                <span className="text-2xl font-black">🛵</span>
+              )}
             </div>
-            <h2 className="text-2xl font-black text-gray-800 dark:text-white">Payment Successful</h2>
-            <p className="text-gray-500 dark:text-gray-400 mt-1">{new Date().toLocaleString()}</p>
+            <h2 className="text-2xl font-black text-gray-800 dark:text-white">
+              {data.payment_status === 'completed' ? "Payment Confirmed" : "Order Placed"}
+            </h2>
+            <p className="text-sm font-semibold text-orange-600 dark:text-orange-400 mt-1">
+              {data.payment_status === 'completed' ? "Payment Verified via Razorpay" : "Pay on Delivery (Cash / UPI)"}
+            </p>
+            <p className="text-xs text-gray-400 mt-1">{new Date().toLocaleString()}</p>
           </div>
 
           <div className="space-y-4">
             <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-xl space-y-2 text-sm">
               <div className="flex justify-between">
                 <span className="text-gray-500 dark:text-gray-400">Order ID</span>
-                <span className="font-semibold text-gray-800 dark:text-gray-200 break-all ml-4 text-right">{data.razorpay_order_id}</span>
+                <span className="font-semibold text-gray-800 dark:text-gray-200 break-all ml-4 text-right">#{data.order_id || data.razorpay_order_id}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-gray-500 dark:text-gray-400">Payment ID</span>
-                <span className="font-semibold text-gray-800 dark:text-gray-200 break-all ml-4 text-right">{data.razorpay_payment_id}</span>
+                <span className="text-gray-500 dark:text-gray-400">Payment Status</span>
+                <span className={`font-black uppercase text-xs px-2.5 py-0.5 rounded-full ${
+                  data.payment_status === 'completed' 
+                    ? "bg-green-100 text-green-700" 
+                    : "bg-orange-100 text-orange-700"
+                }`}>
+                  {data.payment_status === 'completed' ? "Verified" : "Pending Collection"}
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-500 dark:text-gray-400">Payment Reference</span>
+                <span className="font-semibold text-gray-800 dark:text-gray-200 break-all ml-4 text-right">{data.razorpay_payment_id || "Cash on Delivery"}</span>
               </div>
             </div>
 
@@ -104,7 +123,9 @@ const ReceiptModal = ({ isOpen, onClose, data }) => {
             </div>
 
             <div className="border-t border-gray-200 dark:border-gray-700 pt-4 flex justify-between items-center">
-              <span className="text-lg font-bold text-gray-800 dark:text-white">Total Paid</span>
+              <span className="text-lg font-bold text-gray-800 dark:text-white">
+                {data.payment_status === 'completed' ? "Total Paid" : "Total to Pay"}
+              </span>
               <span className="text-2xl font-black text-orange-600 dark:text-orange-400">₹{data.amount}</span>
             </div>
           </div>

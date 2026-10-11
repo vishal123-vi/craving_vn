@@ -1,9 +1,12 @@
 import React, { useState, useEffect } from "react";
+import { useNavigate, Link } from "react-router-dom";
 import api from "../../config/ApiConfig";
 import toast from "react-hot-toast";
 import { FaCheckCircle, FaUtensils, FaMotorcycle, FaHome, FaTimesCircle } from "react-icons/fa";
+import { IoArrowForward, IoNavigateOutline, IoReceiptOutline } from "react-icons/io5";
 
 const CustomerOrders = () => {
+  const navigate = useNavigate();
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedOrder, setSelectedOrder] = useState(null);
@@ -156,13 +159,21 @@ const CustomerOrders = () => {
                       {new Date(order.createdAt).toLocaleDateString()}
                     </td>
                     <td className="py-5 px-8 text-center">
-                      <button 
-                        onClick={() => setSelectedOrder(order)}
-                        className="relative overflow-hidden bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200 border border-gray-200 dark:border-gray-700 hover:border-orange-500 dark:hover:border-orange-500 px-5 py-2.5 rounded-xl text-sm font-black transition-all duration-300 shadow-sm hover:shadow-lg hover:shadow-orange-500/20 hover:text-orange-600 dark:hover:text-orange-400 group/btn"
-                      >
-                        <span className="relative z-10">View Details</span>
-                        <div className="absolute inset-0 w-full h-full bg-gradient-to-r from-orange-100/50 to-orange-50/50 dark:from-orange-500/10 dark:to-transparent translate-x-[-100%] group-hover/btn:translate-x-0 transition-transform duration-300"></div>
-                      </button>
+                      <div className="flex items-center justify-center gap-2">
+                        <Link
+                          to={`/order-track/${order._id}`}
+                          className="bg-orange-500 hover:bg-orange-600 text-white px-3.5 py-2 rounded-xl text-xs font-black shadow-md shadow-orange-500/20 transition flex items-center gap-1.5"
+                        >
+                          <IoNavigateOutline size={15} />
+                          <span>Track Live</span>
+                        </Link>
+                        <button 
+                          onClick={() => setSelectedOrder(order)}
+                          className="bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200 border border-gray-200 dark:border-gray-700 hover:border-orange-500 px-3.5 py-2 rounded-xl text-xs font-black transition"
+                        >
+                          Details
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -209,13 +220,21 @@ const CustomerOrders = () => {
                     </div>
                   </div>
                   
-                  <button 
-                    onClick={() => setSelectedOrder(order)}
-                    className="w-full mt-2 relative overflow-hidden bg-orange-50 dark:bg-orange-900/20 text-orange-600 dark:text-orange-400 border border-orange-200/50 dark:border-orange-500/30 py-3 rounded-xl text-sm font-black transition-all duration-300 hover:shadow-lg hover:shadow-orange-500/20 group/btn z-10"
-                  >
-                    <span className="relative z-10">View Details</span>
-                    <div className="absolute inset-0 w-full h-full bg-gradient-to-r from-orange-100/80 to-orange-50/50 dark:from-orange-500/20 dark:to-transparent translate-x-[-100%] group-hover/btn:translate-x-0 transition-transform duration-300"></div>
-                  </button>
+                  <div className="grid grid-cols-2 gap-2 mt-1 z-10">
+                    <Link
+                      to={`/order-track/${order._id}`}
+                      className="bg-orange-500 hover:bg-orange-600 text-white py-2.5 rounded-xl text-xs font-black transition text-center shadow-md shadow-orange-500/20 flex items-center justify-center gap-1.5"
+                    >
+                      <IoNavigateOutline size={16} />
+                      <span>Track Live</span>
+                    </Link>
+                    <button 
+                      onClick={() => setSelectedOrder(order)}
+                      className="bg-orange-50 dark:bg-orange-900/20 text-orange-600 dark:text-orange-400 border border-orange-200/50 dark:border-orange-500/30 py-2.5 rounded-xl text-xs font-black transition"
+                    >
+                      Details
+                    </button>
+                  </div>
                 </div>
               ))
             ) : (
@@ -270,9 +289,18 @@ const CustomerOrders = () => {
               </div>
             </div>
             
-            <button onClick={() => setSelectedOrder(null)} className="mt-6 w-full bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 text-gray-800 dark:text-white py-3 rounded-xl font-bold transition-colors">
-              Close
-            </button>
+            <div className="mt-6 flex gap-3">
+              <Link
+                to={`/order-track/${selectedOrder._id}`}
+                className="flex-1 bg-orange-500 hover:bg-orange-600 text-white py-3 rounded-xl font-bold text-sm text-center shadow-lg shadow-orange-500/25 flex items-center justify-center gap-2"
+              >
+                <IoNavigateOutline size={18} />
+                <span>Track Live Screen</span>
+              </Link>
+              <button onClick={() => setSelectedOrder(null)} className="flex-1 bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 text-gray-800 dark:text-white py-3 rounded-xl font-bold transition-colors">
+                Close
+              </button>
+            </div>
           </div>
         </div>
       )}

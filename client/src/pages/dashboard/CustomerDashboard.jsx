@@ -3,8 +3,9 @@ import Sidebar from "../../components/Sidebar";
 import CustomerOverview from "../../components/customerDashboard/CustomerOverview";
 import CustomerOrders from "../../components/customerDashboard/CustomerOrders";
 import CustomerSetting from "../../components/customerDashboard/CustomerSetting";
+import CustomerAddresses from "../../components/customerDashboard/CustomerAddresses";
 import { MdDashboard } from "react-icons/md";
-import { FaShoppingCart } from "react-icons/fa";
+import { FaShoppingCart, FaMapMarkerAlt } from "react-icons/fa";
 import { IoMdSettings } from "react-icons/io";
 import { FiMenu, FiX } from "react-icons/fi";
 import { useLocation, useNavigate } from "react-router-dom";
@@ -26,6 +27,7 @@ const CustomerDashboard = () => {
   const mainTabs = [
     { name: "Overview", value: "overview", icon: <MdDashboard size={20} /> },
     { name: "Orders", value: "orders", icon: <FaShoppingCart size={20} /> },
+    { name: "Addresses", value: "addresses", icon: <FaMapMarkerAlt size={20} /> },
   ];
   const settingsTab = { name: "Settings", value: "settings", icon: <IoMdSettings size={20} /> };
 
@@ -87,6 +89,7 @@ const CustomerDashboard = () => {
       <div className="flex-1 bg-(--color-base-100) p-4 rounded-2xl shadow-xl h-full overflow-y-auto w-full">
         {activeTab === "overview" && <CustomerOverview />}
         {activeTab === "orders" && <CustomerOrders />}
+        {activeTab === "addresses" && <CustomerAddresses />}
         {activeTab === "settings" && <CustomerSetting />}
       </div>
     </div>
