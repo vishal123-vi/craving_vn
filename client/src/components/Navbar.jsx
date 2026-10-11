@@ -64,7 +64,7 @@ const Navbar = () => {
     } else if (role === "admin") {
       navigate("/admin-dashboard", { state: { activeTab: "overview" } });
     } else {
-      navigate("/profile");
+      navigate("/customer-dashboard", { state: { activeTab: "overview" } });
     }
   };
 
@@ -141,7 +141,7 @@ const Navbar = () => {
               orderId: appOrderId,
               reason: "Customer closed payment modal",
             });
-          } catch (ignore) {}
+          } catch (ignore) { }
           toast.error("Payment modal cancelled");
         },
       },
@@ -177,7 +177,7 @@ const Navbar = () => {
           orderId: appOrderId,
           reason: response.error?.description || "Payment failed",
         });
-      } catch (ignore) {}
+      } catch (ignore) { }
       toast.error(`Payment failed: ${response.error?.description}`);
     });
 
@@ -341,63 +341,63 @@ const Navbar = () => {
           )}
 
           {isLogin ? (
-          <div className="flex items-center bg-white/10 hover:bg-white/20 border border-white/20 transition-all duration-300 rounded-full pr-2 pl-1 py-1 shadow-lg backdrop-blur-md group">
-            <button
-              className="flex items-center gap-3 cursor-pointer text-left focus:outline-none"
-              title="Go to Dashboard"
-              onClick={handleNavigate}
-            >
-              <div className="relative">
-                <img
-                  src={user?.photo?.url}
-                  alt={user?.fullName}
-                  className="w-10 h-10 rounded-full object-cover object-top ring-2 ring-white/40 group-hover:ring-white transition-all duration-300"
-                />
-                <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-400 border-2 border-(--color-primary) rounded-full"></div>
-              </div>
-              <div className="flex flex-col mr-3">
-                <span className="text-sm font-bold text-white leading-tight">
-                  {user?.fullName}
-                </span>
-                <span className="text-[10px] font-bold text-white/80 uppercase tracking-wider">
-                  {role}
-                </span>
-              </div>
-            </button>
+            <div className="flex items-center bg-white/10 hover:bg-white/20 border border-white/20 transition-all duration-300 rounded-full pr-2 pl-1 py-1 shadow-lg backdrop-blur-md group">
+              <button
+                className="flex items-center gap-3 cursor-pointer text-left focus:outline-none"
+                title="Go to Dashboard"
+                onClick={handleNavigate}
+              >
+                <div className="relative">
+                  <img
+                    src={user?.photo?.url}
+                    alt={user?.fullName}
+                    className="w-10 h-10 rounded-full object-cover object-top ring-2 ring-white/40 group-hover:ring-white transition-all duration-300"
+                  />
+                  <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-400 border-2 border-(--color-primary) rounded-full"></div>
+                </div>
+                <div className="flex flex-col mr-3">
+                  <span className="text-sm font-bold text-white leading-tight">
+                    {user?.fullName}
+                  </span>
+                  <span className="text-[10px] font-bold text-white/80 uppercase tracking-wider">
+                    {role}
+                  </span>
+                </div>
+              </button>
 
-            <div className="w-1px h-8 bg-white/20 mx-1"></div>
+              <div className="w-1px h-8 bg-white/20 mx-1"></div>
 
-            <button
-              onClick={handleLogout}
-              className="text-white/80 hover:text-white hover:bg-red-500/90 p-2.5 rounded-full transition-all duration-300 ml-1 flex items-center justify-center focus:outline-none"
-              title="Logout"
-            >
-              <FaPowerOff size={16} />
-            </button>
-          </div>
-        ) : (
-          <div className="flex items-center gap-2">
-            <Link
-              to="/login"
-              className="text-(--color-primary-content) border border-transparent hover:border-(--color-primary-content) px-3 py-1 rounded"
-            >
-              Login
-            </Link>
-            <Link
-              to="/register/customer"
-              className="bg-(--color-primary-content) text-(--color-primary) hover:bg-(--color-primary) hover:text-(--color-primary-content) border px-3 py-1 rounded"
-            >
-              Register
-            </Link>
-          </div>
-        )}
+              <button
+                onClick={handleLogout}
+                className="text-white/80 hover:text-white hover:bg-red-500/90 p-2.5 rounded-full transition-all duration-300 ml-1 flex items-center justify-center focus:outline-none"
+                title="Logout"
+              >
+                <FaPowerOff size={16} />
+              </button>
+            </div>
+          ) : (
+            <div className="flex items-center gap-2">
+              <Link
+                to="/login"
+                className="text-(--color-primary-content) border border-transparent hover:border-(--color-primary-content) px-3 py-1 rounded"
+              >
+                Login
+              </Link>
+              <Link
+                to="/register/customer"
+                className="bg-(--color-primary-content) text-(--color-primary) hover:bg-(--color-primary) hover:text-(--color-primary-content) border px-3 py-1 rounded"
+              >
+                Register
+              </Link>
+            </div>
+          )}
         </div>
       </div>
 
       {/* Cart Modal Overlay */}
       {isCartOpen && (
         <div className="fixed inset-0 z-100 flex justify-end bg-black/60 backdrop-blur-sm transition-all duration-500" onClick={() => setIsCartOpen(false)}>
-          <div 
+          <div
             className="w-full sm:w-100 h-full shadow-2xl flex flex-col transform transition-transform duration-500 translate-x-0 bg-white/95 dark:bg-gray-900/95 backdrop-blur-xl border-l border-white/20 dark:border-gray-800"
             onClick={(e) => e.stopPropagation()}
           >
@@ -412,7 +412,7 @@ const Navbar = () => {
                   <p className="text-xs text-gray-500 font-medium">{totalItems} {totalItems === 1 ? 'item' : 'items'} selected</p>
                 </div>
               </div>
-              <button 
+              <button
                 onClick={() => setIsCartOpen(false)}
                 className="p-2 rounded-full hover:bg-black/5 dark:hover:bg-white/10 transition-colors text-gray-500 hover:text-gray-800 dark:hover:text-white group"
               >
@@ -425,26 +425,26 @@ const Navbar = () => {
               {cart.map((c) => {
                 const itemImage = c.item.image?.url || "https://placehold.co/150x150?text=Food";
                 return (
-                <div key={c.item._id} className="flex gap-4 p-3 bg-white dark:bg-gray-800 rounded-2xl shadow-sm hover:shadow-md border border-gray-100 dark:border-gray-700/50 transform hover:-translate-y-0.5 transition-all duration-300 group">
-                  <div className="relative w-24 h-24 shrink-0 overflow-hidden rounded-xl">
-                    <img src={itemImage} alt={c.item.itemName} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
-                    <div className="absolute inset-0 bg-linear-to-t from-black/20 to-transparent"></div>
-                  </div>
-                  <div className="flex-1 flex flex-col justify-between py-1">
-                    <div>
-                      <h4 className="font-bold text-gray-800 dark:text-gray-100 line-clamp-1 group-hover:text-orange-600 transition-colors">{c.item.itemName}</h4>
-                      <p className="text-orange-600 dark:text-orange-400 font-extrabold text-sm mt-0.5">₹{c.item.price}</p>
+                  <div key={c.item._id} className="flex gap-4 p-3 bg-white dark:bg-gray-800 rounded-2xl shadow-sm hover:shadow-md border border-gray-100 dark:border-gray-700/50 transform hover:-translate-y-0.5 transition-all duration-300 group">
+                    <div className="relative w-24 h-24 shrink-0 overflow-hidden rounded-xl">
+                      <img src={itemImage} alt={c.item.itemName} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
+                      <div className="absolute inset-0 bg-linear-to-t from-black/20 to-transparent"></div>
                     </div>
-                    <div className="flex items-center justify-between mt-3">
-                      <div className="flex items-center gap-1 bg-gray-100 dark:bg-gray-700/50 rounded-lg p-1 border border-gray-200/50 dark:border-gray-600/50">
-                        <button onClick={() => handleRemoveFromCart(c.item, false)} className="w-8 h-8 flex items-center justify-center rounded-md bg-white dark:bg-gray-600 shadow-sm hover:bg-orange-500 hover:text-white text-orange-600 dark:text-orange-400 font-bold text-lg transition-all active:scale-95">-</button>
-                        <span className="font-bold text-gray-800 dark:text-gray-200 min-w-6 text-center text-sm">{c.quantity}</span>
-                        <button onClick={() => handleAddToCart(c.item)} className="w-8 h-8 flex items-center justify-center rounded-md bg-white dark:bg-gray-600 shadow-sm hover:bg-orange-500 hover:text-white text-orange-600 dark:text-orange-400 font-bold text-lg transition-all active:scale-95">+</button>
+                    <div className="flex-1 flex flex-col justify-between py-1">
+                      <div>
+                        <h4 className="font-bold text-gray-800 dark:text-gray-100 line-clamp-1 group-hover:text-orange-600 transition-colors">{c.item.itemName}</h4>
+                        <p className="text-orange-600 dark:text-orange-400 font-extrabold text-sm mt-0.5">₹{c.item.price}</p>
                       </div>
-                      <p className="font-black text-gray-800 dark:text-white text-lg">₹{c.item.price * c.quantity}</p>
+                      <div className="flex items-center justify-between mt-3">
+                        <div className="flex items-center gap-1 bg-gray-100 dark:bg-gray-700/50 rounded-lg p-1 border border-gray-200/50 dark:border-gray-600/50">
+                          <button onClick={() => handleRemoveFromCart(c.item, false)} className="w-8 h-8 flex items-center justify-center rounded-md bg-white dark:bg-gray-600 shadow-sm hover:bg-orange-500 hover:text-white text-orange-600 dark:text-orange-400 font-bold text-lg transition-all active:scale-95">-</button>
+                          <span className="font-bold text-gray-800 dark:text-gray-200 min-w-6 text-center text-sm">{c.quantity}</span>
+                          <button onClick={() => handleAddToCart(c.item)} className="w-8 h-8 flex items-center justify-center rounded-md bg-white dark:bg-gray-600 shadow-sm hover:bg-orange-500 hover:text-white text-orange-600 dark:text-orange-400 font-bold text-lg transition-all active:scale-95">+</button>
+                        </div>
+                        <p className="font-black text-gray-800 dark:text-white text-lg">₹{c.item.price * c.quantity}</p>
+                      </div>
                     </div>
                   </div>
-                </div>
                 );
               })}
             </div>
@@ -506,11 +506,10 @@ const Navbar = () => {
                   <button
                     type="button"
                     onClick={() => setSelectedPaymentMethod("cod")}
-                    className={`py-2 px-1 rounded-xl border text-[11px] font-black flex flex-col items-center justify-center gap-1 transition-all text-center ${
-                      selectedPaymentMethod === "cod"
+                    className={`py-2 px-1 rounded-xl border text-[11px] font-black flex flex-col items-center justify-center gap-1 transition-all text-center ${selectedPaymentMethod === "cod"
                         ? "bg-orange-500 text-white border-orange-500 shadow-md shadow-orange-500/25 scale-[1.02]"
                         : "bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border-gray-200 dark:border-gray-700 hover:border-orange-300"
-                    }`}
+                      }`}
                   >
                     <span className="text-base">💵</span>
                     <span className="leading-tight">Cash on Delivery</span>
@@ -518,11 +517,10 @@ const Navbar = () => {
                   <button
                     type="button"
                     onClick={() => setSelectedPaymentMethod("upi")}
-                    className={`py-2 px-1 rounded-xl border text-[11px] font-black flex flex-col items-center justify-center gap-1 transition-all text-center ${
-                      selectedPaymentMethod === "upi"
+                    className={`py-2 px-1 rounded-xl border text-[11px] font-black flex flex-col items-center justify-center gap-1 transition-all text-center ${selectedPaymentMethod === "upi"
                         ? "bg-orange-500 text-white border-orange-500 shadow-md shadow-orange-500/25 scale-[1.02]"
                         : "bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border-gray-200 dark:border-gray-700 hover:border-orange-300"
-                    }`}
+                      }`}
                   >
                     <span className="text-base">📱</span>
                     <span className="leading-tight">UPI / QR Code</span>
@@ -530,11 +528,10 @@ const Navbar = () => {
                   <button
                     type="button"
                     onClick={() => setSelectedPaymentMethod("card")}
-                    className={`py-2 px-1 rounded-xl border text-[11px] font-black flex flex-col items-center justify-center gap-1 transition-all text-center ${
-                      selectedPaymentMethod === "card"
+                    className={`py-2 px-1 rounded-xl border text-[11px] font-black flex flex-col items-center justify-center gap-1 transition-all text-center ${selectedPaymentMethod === "card"
                         ? "bg-orange-500 text-white border-orange-500 shadow-md shadow-orange-500/25 scale-[1.02]"
                         : "bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border-gray-200 dark:border-gray-700 hover:border-orange-300"
-                    }`}
+                      }`}
                   >
                     <span className="text-base">💳</span>
                     <span className="leading-tight">Cards / NetBank</span>
@@ -568,10 +565,10 @@ const Navbar = () => {
           setIsAddressModalOpen(false);
         }}
       />
-      <ReceiptModal 
-        isOpen={!!receiptData} 
-        onClose={() => setReceiptData(null)} 
-        data={receiptData} 
+      <ReceiptModal
+        isOpen={!!receiptData}
+        onClose={() => setReceiptData(null)}
+        data={receiptData}
       />
       <SandboxPaymentModal
         isOpen={!!sandboxOrderData}

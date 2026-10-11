@@ -1,6 +1,4 @@
 import Customer from "../models/customer.model.js";
-import User from "../models/user.model.js";
-import bcrypt from "bcrypt";
 
 // Helper to get or create customer for current user
 const getOrCreateCustomer = async (userId) => {
@@ -155,75 +153,3 @@ export const setDefaultCustomerAddress = async (req, res, next) => {
     next(error);
   }
 };
-
-// ─── PUT /customer/profile ───────────────────────────────────────────────────
-export const updateCustomerProfile = async (req, res, next) => {
-  try {
-    const { fullName, phone, photoUrl } = req.body;
-    const user = await User.findById(req.user._id);
-    if (!user) {
-      return res.status(404).json({ success: false, message: "User not found" });
-    }
-
-    if (fullName) user.fullName = fullName;
-    if (phone) user.phone = phone;
-    if (photoUrl) {
-      user.photo = { url: photoUrl, publicId: user.photo?.publicId || "" };
-    }
-
-    await user.save();
-
-    res.status(200).json({
-      success: true,
-      message: "Profile updated successfully",
-      data: {
-        _id: user._id,
-        fullName: user.fullName,
-        email: user.email,
-        phone: user.phone,
-        photo: user.photo,
-        userType: user.userType,
-      },
-    });
-  } catch (error) {
-    next(error);
-  }
-};
-
-// ─── POST /customer/change-password ──────────────────────────────────────────
-export const changeCustomerPassword = async (req, res, next) => {
-  try {
-    const { currentPassword, newPassword } = req.body;
-    if (!newPassword || newPassword.length < 6) {
-      return res.status(400).json({
-        success: false,
-        message: "New password must be at least 6 characters long",
-      });
-    }
-
-    const user = await User.findById(req.user._id);
-    if (!user) {
-      return res.status(404).json({ success: false, message: "User not found" });
-    }
-
-    if (user.password && currentPassword) {
-      const isMatch = await bcrypt.compare(currentPassword, user.password);
-      if (!isMatch) {
-        return res.status(400).json({ success: false, message: "Current password is incorrect" });
-      }
-    }
-
-    const hashedPassword = await bcrypt.hash(newPassword, 10);
-    user.password = hashedPassword;
-    user.lastPasswordChange = new Date();
-    await user.save();
-
-    res.status(200).json({
-      success: true,
-      message: "Password changed successfully!",
-    });
-  } catch (error) {
-    next(error);
-  }
-};
-
