@@ -26,7 +26,6 @@ const CustomerDashboard = lazy(() => import("./pages/dashboard/CustomerDashboard
 const RestaurantDashboard = lazy(() => import("./pages/dashboard/RestaurantDashboard"));
 const RiderDashboard = lazy(() => import("./pages/dashboard/RiderDashboard"));
 const AdminDashboard = lazy(() => import("./pages/dashboard/AdminDashboard"));
-const ProfilePage = lazy(() => import("./pages/ProfilePage"));
 const Test = lazy(() => import("./pages/Test"));
 
 // Branded loading fallback
@@ -46,7 +45,6 @@ const App = () => {
 
   const hideFooterRoutes = [
     "/customer-dashboard",
-    "/profile",
     "/restaurant-dashboard",
     "/rider-dashboard",
     "/admin-dashboard",
@@ -69,7 +67,6 @@ const App = () => {
           <Route path="/register" element={<Register />} />
           <Route path="/register/:userType" element={<Register />} />
           <Route path="/customer-dashboard" element={<CustomerDashboard />} />
-          <Route path="/profile" element={<ProfilePage />} />
           <Route path="/restaurant-dashboard" element={<RestaurantDashboard />} />
           <Route path="/rider-dashboard" element={<RiderDashboard />} />
           <Route path="/admin-dashboard" element={<AdminDashboard />} />
