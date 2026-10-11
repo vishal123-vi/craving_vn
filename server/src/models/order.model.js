@@ -110,6 +110,12 @@ const OrderSchema = mongoose.Schema(
   },
 );
 
+// High-performance compound indexes for production queries
+OrderSchema.index({ customerId: 1, createdAt: -1 });
+OrderSchema.index({ restaurantId: 1, orderStatus: 1 });
+OrderSchema.index({ "paymentDetails.razorpayOrderId": 1 });
+OrderSchema.index({ createdAt: -1 });
+
 const Order = mongoose.model("order", OrderSchema);
 
 export default Order;

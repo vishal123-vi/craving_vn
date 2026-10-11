@@ -98,6 +98,11 @@ const RestaurantSchema = mongoose.Schema(
   { timestamps: true },
 );
 
+// Production query indexes
+RestaurantSchema.index({ status: 1 });
+RestaurantSchema.index({ managerId: 1 });
+RestaurantSchema.index({ city: 1, status: 1 });
+
 const Restaurant = mongoose.model("restaurant", RestaurantSchema);
 
 export default Restaurant;

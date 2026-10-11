@@ -45,6 +45,8 @@ const MenuSchema = new mongoose.Schema(
   { timestamps: true, suppressReservedKeysWarning: true },
 );
 
+MenuSchema.index({ restaurantId: 1 });
+
 const Menu = mongoose.model("menu", MenuSchema);
 
 export default Menu;

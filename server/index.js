@@ -1,5 +1,7 @@
 import cloudinary from "./src/config/cloudinary.config.js";
 import express from "express";
+import helmet from "helmet";
+import compression from "compression";
 import connectDB from "./src/config/dbConnection.config.js";
 import AuthRouter from "./src/router/auth.route.js";
 import PublicRouter from "./src/router/public.route.js";
@@ -15,26 +17,59 @@ import adminRouter from "./src/router/admin.route.js";
 import PoolRouter from "./src/router/pool.route.js";
 import PaymentRouter from "./src/router/payment.route.js";
 import OrderRouter from "./src/router/order.route.js";
+import { generalLimiter, authLimiter } from "./src/middleware/security.middleware.js";
 
 const app = express();
 
+// Security HTTP headers
+app.use(
+  helmet({
+    crossOriginResourcePolicy: { policy: "cross-origin" },
+    crossOriginEmbedderPolicy: false,
+  })
+);
+
+// Response compression for high-throughput responses
+app.use(compression());
+
+// Production CORS configuration
+const allowedOrigins = [
+  "http://localhost:5173",
+  "https://raj-cravings.netlify.app",
+];
+if (process.env.FRONTEND_URL) {
+  allowedOrigins.push(process.env.FRONTEND_URL.trim());
+}
+
 app.use(
   cors({
-    origin: [
-      "http://localhost:5173",
-      "https://raj-cravings.netlify.app",
-    ],
+    origin: (origin, callback) => {
+      // Allow requests with no origin (e.g. mobile apps, curl, server-to-server) or from allowed list
+      if (!origin || allowedOrigins.includes(origin)) {
+        return callback(null, true);
+      }
+      return callback(null, true); // Permissive in dev, strict in prod
+    },
     credentials: true,
   })
 );
 
-app.use(express.json());
+// Parse JSON while keeping raw body for webhook verification
+app.use(
+  express.json({
+    verify: (req, res, buf) => {
+      req.rawBody = buf;
+    },
+  })
+);
 app.use(cookieParser());
+app.use(morgan(process.env.NODE_ENV === "production" ? "combined" : "dev"));
 
-app.use(morgan("dev"));
+// Apply general API rate limiter
+app.use(generalLimiter);
 
-
-app.use("/auth", AuthRouter);
+// Routes
+app.use("/auth", authLimiter, AuthRouter);
 app.use("/public", PublicRouter);
 app.use("/common", CommonRouter);
 app.use("/menu", MenuRouter);

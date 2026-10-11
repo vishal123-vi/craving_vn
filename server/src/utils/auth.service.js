@@ -14,9 +14,8 @@ export const genToken = async (user, res) => {
       secure: true,
       sameSite: "none",
     });
-    console.log(token);
   } catch (error) {
-    throw next(error);
+    throw error;
   }
 };
 
@@ -34,9 +33,7 @@ export const genOTPToken = async (user, res) => {
       secure: true,
       sameSite: "none",
     });
-
-    console.log(token);
   } catch (error) {
-    throw next(error);
+    throw error;
   }
 };
