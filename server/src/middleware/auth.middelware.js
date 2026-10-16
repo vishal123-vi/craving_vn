@@ -1,16 +1,33 @@
 import jwt from "jsonwebtoken";
 import User from "../models/user.model.js";
 
+const extractToken = (req) => {
+  if (req.cookies?.Oreo) return req.cookies.Oreo;
+  const authHeader = req.headers?.authorization || req.headers?.Authorization;
+  if (authHeader && authHeader.startsWith("Bearer ")) {
+    return authHeader.split(" ")[1];
+  }
+  return null;
+};
+
+const extractOtpToken = (req) => {
+  if (req.cookies?.kitkat) return req.cookies.kitkat;
+  if (req.cookies?.otpToken) return req.cookies.otpToken;
+  const authHeader = req.headers?.authorization || req.headers?.Authorization;
+  if (authHeader && authHeader.startsWith("Bearer ")) {
+    return authHeader.split(" ")[1];
+  }
+  return null;
+};
+
 export const AuthProtect = async (req, res, next) => {
   try {
-    const token = req.cookies.Oreo;
+    const token = extractToken(req);
     if (!token) {
       const error = new Error("Session Expired");
       error.statusCode = 401;
       return next(error);
     }
-
-
 
     const decode = await jwt.verify(token, process.env.JWT_SECRET);
     if (!decode) {
@@ -19,7 +36,7 @@ export const AuthProtect = async (req, res, next) => {
       return next(error);
     }
 
-    const verifiedUser = await User.findById(decode.id);
+    const verifiedUser = await User.findById(decode.id || decode._id);
     if (!verifiedUser) {
       const error = new Error("Session Expired");
       error.statusCode = 401;
@@ -33,16 +50,15 @@ export const AuthProtect = async (req, res, next) => {
     next(error);
   }
 };
+
 export const OTPAuthProtect = async (req, res, next) => {
   try {
-    const token = req.cookies.kitkat;
+    const token = extractOtpToken(req);
     if (!token) {
       const error = new Error("Session Expired");
       error.statusCode = 401;
       return next(error);
     }
-
-    // console.log("Token From MiddleWare : ", token);
 
     const decode = await jwt.verify(token, process.env.JWT_SECRET);
     if (!decode) {
@@ -51,17 +67,13 @@ export const OTPAuthProtect = async (req, res, next) => {
       return next(error);
     }
 
-    // console.log("Decode:", decode);
-
-    const verifiedUser = await User.findById(decode.id);
-    // console.log("VerifiedUser:", verifiedUser);
+    const verifiedUser = await User.findById(decode.id || decode._id);
     if (!verifiedUser) {
       const error = new Error("Session Expired");
       error.statusCode = 401;
       return next(error);
     }
 
-    // Send the verified user to the Controller for further processing
     req.user = verifiedUser;
     next();
   } catch (error) {
@@ -69,16 +81,15 @@ export const OTPAuthProtect = async (req, res, next) => {
     next(error);
   }
 };
+
 export const RestaurantAuthProtect = async (req, res, next) => {
   try {
-    const token = req.cookies.Oreo;
+    const token = extractToken(req);
     if (!token) {
       const error = new Error("Session Expired");
       error.statusCode = 401;
       return next(error);
     }
-
-    // console.log("Token From MiddleWare : ", token);
 
     const decode = await jwt.verify(token, process.env.JWT_SECRET);
     if (!decode) {
@@ -87,10 +98,7 @@ export const RestaurantAuthProtect = async (req, res, next) => {
       return next(error);
     }
 
-    // console.log("Decode:", decode);
-
-    const verifiedUser = await User.findById(decode.id);
-    // console.log("VerifiedUser:", verifiedUser);
+    const verifiedUser = await User.findById(decode.id || decode._id);
     if (!verifiedUser) {
       const error = new Error("Session Expired");
       error.statusCode = 401;
@@ -103,7 +111,6 @@ export const RestaurantAuthProtect = async (req, res, next) => {
       return next(error);
     }
 
-    // Send the verified user to the Controller for further processing
     req.user = verifiedUser;
     next();
   } catch (error) {
@@ -114,7 +121,7 @@ export const RestaurantAuthProtect = async (req, res, next) => {
 
 export const RiderAuthProtect = async (req, res, next) => {
   try {
-    const token = req.cookies.Oreo;
+    const token = extractToken(req);
     if (!token) {
       const error = new Error("Session Expired");
       error.statusCode = 401;
@@ -128,7 +135,7 @@ export const RiderAuthProtect = async (req, res, next) => {
       return next(error);
     }
 
-    const verifiedUser = await User.findById(decode.id);
+    const verifiedUser = await User.findById(decode.id || decode._id);
     if (!verifiedUser) {
       const error = new Error("Session Expired");
       error.statusCode = 401;
@@ -151,7 +158,7 @@ export const RiderAuthProtect = async (req, res, next) => {
 
 export const AdminAuthProtect = async (req, res, next) => {
   try {
-    const token = req.cookies.Oreo;
+    const token = extractToken(req);
     if (!token) {
       const error = new Error("Session Expired");
       error.statusCode = 401;
@@ -165,7 +172,7 @@ export const AdminAuthProtect = async (req, res, next) => {
       return next(error);
     }
 
-    const verifiedUser = await User.findById(decode.id);
+    const verifiedUser = await User.findById(decode.id || decode._id);
     if (!verifiedUser) {
       const error = new Error("Session Expired");
       error.statusCode = 401;

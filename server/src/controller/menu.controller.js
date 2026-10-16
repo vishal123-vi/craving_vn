@@ -1,5 +1,7 @@
 import Menu from "../models/menu.model.js";
+import Restaurant from "../models/restaurant.model.js";
 import { UploadSingleImage } from "../utils/image.service.js";
+
 export const getMenuItems = async (req, res, next) => {
   try {
     const { restaurantId } = req.params;
@@ -13,13 +15,30 @@ export const getMenuItems = async (req, res, next) => {
 export const createMenuItem = async (req, res, next) => {
   try {
     const { itemName, description, price, category, type, travelScore } = req.body;
-    
-    // In a real app, restaurantId comes from req.user (authenticated manager)
-    // For now, if passed in body, use it, else wait for auth middleware integration
-    const restaurantId = req.body.restaurantId || req.user?._id;
+    const restaurantId = req.body.restaurantId;
 
     if (!restaurantId) {
       return res.status(400).json({ success: false, message: "Restaurant ID is required" });
+    }
+
+    // Verify manager ownership
+    const restaurant = await Restaurant.findOne({
+      _id: restaurantId,
+      managerId: req.user?._id,
+    });
+
+    if (!restaurant) {
+      return res.status(403).json({
+        success: false,
+        message: "You are not authorized to manage menu for this restaurant",
+      });
+    }
+
+    if (restaurant.status === "blocked") {
+      return res.status(403).json({
+        success: false,
+        message: "Restaurant account has been suspended by Admin",
+      });
     }
 
     let uploadedImage = { url: "", publicId: "" };
@@ -70,10 +89,30 @@ export const updateMenuItem = async (req, res, next) => {
   try {
     const { itemId } = req.params;
     const { itemName, description, price, category, type, status, travelScore } = req.body;
-    const restaurantId = req.body.restaurantId || req.user?._id;
+    const restaurantId = req.body.restaurantId;
 
     if (!restaurantId) {
       return res.status(400).json({ success: false, message: "Restaurant ID is required" });
+    }
+
+    // Verify manager ownership
+    const restaurant = await Restaurant.findOne({
+      _id: restaurantId,
+      managerId: req.user?._id,
+    });
+
+    if (!restaurant) {
+      return res.status(403).json({
+        success: false,
+        message: "You are not authorized to update menu for this restaurant",
+      });
+    }
+
+    if (restaurant.status === "blocked") {
+      return res.status(403).json({
+        success: false,
+        message: "Restaurant account has been suspended by Admin",
+      });
     }
 
     let imageUpdate = {};
@@ -126,10 +165,30 @@ export const updateMenuItem = async (req, res, next) => {
 export const deleteMenuItem = async (req, res, next) => {
   try {
     const { itemId } = req.params;
-    const restaurantId = req.body.restaurantId || req.user?._id;
+    const restaurantId = req.body?.restaurantId || req.query?.restaurantId;
 
     if (!restaurantId) {
       return res.status(400).json({ success: false, message: "Restaurant ID is required" });
+    }
+
+    // Verify manager ownership
+    const restaurant = await Restaurant.findOne({
+      _id: restaurantId,
+      managerId: req.user?._id,
+    });
+
+    if (!restaurant) {
+      return res.status(403).json({
+        success: false,
+        message: "You are not authorized to delete items from this restaurant",
+      });
+    }
+
+    if (restaurant.status === "blocked") {
+      return res.status(403).json({
+        success: false,
+        message: "Restaurant account has been suspended by Admin",
+      });
     }
 
     const updatedMenu = await Menu.findOneAndUpdate(

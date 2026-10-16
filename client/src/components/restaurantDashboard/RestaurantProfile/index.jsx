@@ -46,12 +46,27 @@ const RestaurantProfileContainer = ({ activeRestaurantId, refreshRestaurants, re
         />
       ) : isProfileCreated ? (
         <>
-          <div className="flex justify-between items-center bg-white p-4 rounded-xl shadow-sm border border-gray-100">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center bg-white p-4 rounded-xl shadow-sm border border-gray-100 gap-4 sm:gap-0">
             <div>
-              <h2 className="text-xl font-bold text-gray-800">{profileData?.restaurantName || "Restaurant Profile"}</h2>
-              <p className="text-sm text-gray-500">Manage your restaurant details and settings</p>
+              <div className="flex items-center gap-2.5">
+                <h2 className="text-xl font-bold text-gray-800">{profileData?.restaurantName || "Restaurant Profile"}</h2>
+                {profileData?.status === "active" ? (
+                  <span className="px-2.5 py-0.5 text-xs font-bold rounded-full bg-green-100 text-green-700 border border-green-200">
+                    Approved
+                  </span>
+                ) : profileData?.status === "blocked" ? (
+                  <span className="px-2.5 py-0.5 text-xs font-bold rounded-full bg-red-100 text-red-700 border border-red-200">
+                    Suspended
+                  </span>
+                ) : (
+                  <span className="px-2.5 py-0.5 text-xs font-bold rounded-full bg-amber-100 text-amber-700 border border-amber-200">
+                    Pending Admin Approval
+                  </span>
+                )}
+              </div>
+              <p className="text-sm text-gray-500">Manage your restaurant details, documents, and settings</p>
             </div>
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-4 flex-wrap">
               <button
                 onClick={() => setShowCreateForm(true)}
                 className="flex items-center gap-2 bg-gray-100 text-gray-700 hover:bg-gray-200 px-4 py-2 rounded-lg font-semibold text-sm transition-all"
@@ -59,15 +74,26 @@ const RestaurantProfileContainer = ({ activeRestaurantId, refreshRestaurants, re
                 <MdAddCircleOutline className="text-lg" /> Add Another Restaurant
               </button>
               
-              <div className="h-8 w-px bg-gray-300"></div>
+              <div className="hidden sm:block h-8 w-px bg-gray-300"></div>
 
-              <span className={`font-semibold ${profileData?.isOpen ? "text-green-600" : "text-red-500"}`}>
-                {profileData?.isOpen ? "Currently Open" : "Currently Closed"}
-              </span>
-              <label className="relative inline-flex items-center cursor-pointer">
-                <input type="checkbox" className="sr-only peer" checked={profileData?.isOpen || false} onChange={handleToggleStatus} />
-                <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-500"></div>
-              </label>
+              <div className="flex items-center gap-2">
+                <span className={`font-semibold text-sm ${profileData?.isOpen ? "text-green-600" : "text-red-500"}`}>
+                  {profileData?.isOpen ? "Currently Open" : "Currently Closed"}
+                </span>
+                <label 
+                  className={`relative inline-flex items-center ${profileData?.status !== "active" && !profileData?.isOpen ? "cursor-not-allowed opacity-60" : "cursor-pointer"}`}
+                  title={profileData?.status !== "active" && !profileData?.isOpen ? "Approval required before opening online" : "Toggle store open/closed"}
+                >
+                  <input 
+                    type="checkbox" 
+                    className="sr-only peer" 
+                    checked={profileData?.isOpen || false} 
+                    disabled={profileData?.status !== "active" && !profileData?.isOpen}
+                    onChange={handleToggleStatus} 
+                  />
+                  <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-500"></div>
+                </label>
+              </div>
             </div>
           </div>
 

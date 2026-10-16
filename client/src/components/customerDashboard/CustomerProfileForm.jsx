@@ -80,7 +80,15 @@ const CustomerProfileForm = () => {
         if (key === "photo" && formData[key]) {
           payload.append("displayPic", formData[key]); // Backend expects displayPic
         } else if (key === "addresses") {
-          payload.append("addresses", JSON.stringify(formData.addresses));
+          const cleanedAddresses = (formData.addresses || [])
+            .filter((a) => a && (a.address?.trim() || a.city?.trim() || a.pincode?.trim()))
+            .map((a) => ({
+              ...a,
+              country: a.country || "India",
+              city: a.city || "Bhopal",
+              state: a.state || "Madhya Pradesh",
+            }));
+          payload.append("addresses", JSON.stringify(cleanedAddresses));
         } else if (key !== "photo" && formData[key] !== null && formData[key] !== "") {
           payload.append(key, formData[key]);
         }

@@ -30,6 +30,7 @@ const UserSchema = mongoose.Schema(
     password: {
       type: String,
       required: function() { return !this.googleId; },
+      select: false,
     },
     photo: {
       url: {
@@ -52,17 +53,29 @@ const UserSchema = mongoose.Schema(
     },
     addresses: [
       {
-        address: { type: String, required: true },
-        city: { type: String, required: true },
-        state: { type: String, required: true },
-        pincode: { type: String, required: true },
-        country: { type: String, required: true },
-        isDefault: { type: Boolean, default: false }
-      }
+        address: { type: String, default: "" },
+        city: { type: String, default: "Bhopal" },
+        state: { type: String, default: "Madhya Pradesh" },
+        pincode: { type: String, default: "" },
+        country: { type: String, default: "India" },
+        isDefault: { type: Boolean, default: false },
+      },
     ],
   },
   {
     timestamps: true,
+    toJSON: {
+      transform: (doc, ret) => {
+        delete ret.password;
+        return ret;
+      },
+    },
+    toObject: {
+      transform: (doc, ret) => {
+        delete ret.password;
+        return ret;
+      },
+    },
   },
 );
 

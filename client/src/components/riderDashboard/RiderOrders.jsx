@@ -1,33 +1,106 @@
 import React, { useState, useEffect } from "react";
-import { FaMapMarkedAlt } from "react-icons/fa";
+import { 
+  FaMapMarkedAlt, 
+  FaPhoneAlt, 
+  FaMotorcycle, 
+  FaCheckCircle, 
+  FaBoxOpen, 
+  FaStore, 
+  FaUser, 
+  FaHistory,
+  FaRoute
+} from "react-icons/fa";
+import { IoRefreshOutline, IoTimeOutline, IoLocationSharp, IoArrowForward } from "react-icons/io5";
 import api from "../../config/ApiConfig";
 import toast from "react-hot-toast";
 
 const RiderOrders = () => {
-  const [orders, setOrders] = useState([]);
+  const [activeTab, setActiveTab] = useState("available"); // "active", "available", "history"
+  const [activeOrder, setActiveOrder] = useState(null);
+  const [availableOrders, setAvailableOrders] = useState([]);
+  const [historyOrders, setHistoryOrders] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [actionLoading, setActionLoading] = useState(false);
+
+  const fetchAllRiderData = async (showLoading = true) => {
+    try {
+      if (showLoading) setLoading(true);
+
+      const [activeRes, availRes, historyRes] = await Promise.allSettled([
+        api.get("/order/rider/active-order"),
+        api.get("/order/rider/available-orders"),
+        api.get("/order/rider/history"),
+      ]);
+
+      if (activeRes.status === "fulfilled" && activeRes.value.data?.success) {
+        const active = activeRes.value.data.data;
+        setActiveOrder(active);
+        // If rider has an active order, default to active tab
+        if (active && activeTab === "available" && showLoading) {
+          setActiveTab("active");
+        }
+      }
+
+      if (availRes.status === "fulfilled" && availRes.value.data?.success) {
+        setAvailableOrders(availRes.value.data.data || []);
+      }
+
+      if (historyRes.status === "fulfilled" && historyRes.value.data?.success) {
+        setHistoryOrders(historyRes.value.data.data || []);
+      }
+    } catch (error) {
+      console.error("Error fetching rider orders:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    fetchOrders();
+    fetchAllRiderData(true);
     const interval = setInterval(() => {
-      fetchOrders(false);
-    }, 10000); // Poll every 10 seconds
+      fetchAllRiderData(false);
+    }, 15000); // Live poll every 15s
 
     return () => clearInterval(interval);
   }, []);
 
-  const fetchOrders = async (showLoading = true) => {
+  const handleClaimOrder = async (orderId) => {
     try {
-      if (showLoading) setLoading(true);
-      const response = await api.get("/order/rider-orders");
-      if (response.data.success) {
-        setOrders(response.data.data);
+      setActionLoading(true);
+      const res = await api.patch(`/order/rider/claim/${orderId}`);
+      if (res.data?.success) {
+        toast.success(res.data.message || "Task claimed! Head to restaurant for pickup. 🛵");
+        setActiveOrder(res.data.data);
+        setActiveTab("active");
+        fetchAllRiderData(false);
       }
     } catch (error) {
-      console.error("Order fetch error:", error.response?.data || error);
-      if (showLoading) toast.error(error.response?.data?.message || "Failed to fetch orders");
+      console.error("Claim error:", error);
+      toast.error(error.response?.data?.message || "Failed to claim order");
     } finally {
-      setLoading(false);
+      setActionLoading(false);
+    }
+  };
+
+  const handleUpdateStatus = async (orderId, newStatus) => {
+    try {
+      setActionLoading(true);
+      const res = await api.patch(`/order/rider/status/${orderId}`, { status: newStatus });
+      if (res.data?.success) {
+        toast.success(`Delivery status updated to: ${newStatus.toUpperCase()}`);
+        if (newStatus === "delivered") {
+          setActiveOrder(null);
+          setActiveTab("history");
+        } else {
+          setActiveOrder(res.data.data);
+        }
+        fetchAllRiderData(false);
+      }
+    } catch (error) {
+      console.error("Status update error:", error);
+      toast.error(error.response?.data?.message || "Failed to update status");
+    } finally {
+      setActionLoading(false);
     }
   };
 
@@ -37,166 +110,461 @@ const RiderOrders = () => {
   };
 
   return (
-    <div className="overflow-y-auto h-full">
-      <h2 className="text-2xl font-bold mb-6">My Orders</h2>
-      <div className="bg-gradient-to-br from-white/95 to-white/70 dark:from-gray-900/95 dark:to-gray-800/80 backdrop-blur-xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] dark:shadow-[0_8px_30px_rgb(0,0,0,0.2)] border border-white/40 dark:border-gray-700/50 rounded-3xl overflow-hidden relative">
-        <div className="absolute inset-0 bg-gradient-to-br from-orange-500/5 to-transparent pointer-events-none"></div>
-        {/* Desktop Table View */}
-        <div className="hidden md:block">
-          <table className="w-full text-sm sm:text-base relative z-10">
-            <thead>
-              <tr className="bg-gradient-to-r from-gray-50/80 to-transparent dark:from-gray-800/80 border-b border-gray-200/60 dark:border-gray-700/60 text-gray-500 dark:text-gray-400 uppercase text-xs tracking-widest font-bold">
-                <th className="text-left py-5 px-8">Order ID</th>
-                <th className="text-left py-5 px-6">Restaurant</th>
-                <th className="text-left py-5 px-6">Amount</th>
-                <th className="text-left py-5 px-6">Status</th>
-                <th className="text-left py-5 px-6">Date</th>
-                <th className="text-center py-5 px-8">Action</th>
-              </tr>
-            </thead>
-            <tbody>
-              {loading && orders.length === 0 ? (
-                <tr>
-                  <td colSpan="6" className="text-center py-8">
-                    <div className="flex justify-center items-center">
-                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-500"></div>
-                    </div>
-                  </td>
-                </tr>
-              ) : orders.length > 0 ? (
-                orders.map((order) => (
-                  <tr key={order._id} className="border-b border-gray-100/60 dark:border-gray-800/60 hover:bg-gradient-to-r hover:from-orange-50/80 hover:to-transparent dark:hover:from-orange-900/10 transition-all duration-300 group">
-                    <td className="py-5 px-8 font-extrabold text-gray-900 dark:text-white group-hover:text-orange-600 dark:group-hover:text-orange-400 transition-colors">
-                      #{order._id.substring(0, 8).toUpperCase()}
-                    </td>
-                    <td className="py-5 px-6 font-semibold text-gray-700 dark:text-gray-300">
-                      {order.restaurantId?.restaurantName || "Unknown"}
-                    </td>
-                    <td className="py-5 px-6 font-black text-lg text-transparent bg-clip-text bg-gradient-to-r from-orange-600 to-orange-400 dark:from-orange-400 dark:to-orange-300">
-                      ₹{order.billDetails?.finalAmount || 0}
-                    </td>
-                    <td className="py-5 px-6">
-                      <span className={`inline-flex items-center gap-2 px-4 py-1.5 rounded-xl text-xs font-black border capitalize shadow-sm transition-all duration-300 ${
-                        order.orderStatus === "delivered" ? "bg-green-50/80 text-green-700 border-green-200/50 dark:bg-green-500/10 dark:text-green-400 dark:border-green-500/20 shadow-green-500/10" :
-                        order.orderStatus === "pending" || order.orderStatus === "preparing" ? "bg-yellow-50/80 text-yellow-700 border-yellow-200/50 dark:bg-yellow-500/10 dark:text-yellow-400 dark:border-yellow-500/20 shadow-yellow-500/10" :
-                        "bg-red-50/80 text-red-700 border-red-200/50 dark:bg-red-500/10 dark:text-red-400 dark:border-red-500/20 shadow-red-500/10"
-                      }`}>
-                        <span className={`w-2 h-2 rounded-full animate-pulse ${
-                          order.orderStatus === "delivered" ? "bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.6)]" :
-                          order.orderStatus === "pending" || order.orderStatus === "preparing" ? "bg-yellow-500 shadow-[0_0_8px_rgba(234,179,8,0.6)]" :
-                          "bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.6)]"
-                        }`}></span>
-                        {order.orderStatus}
-                      </span>
-                    </td>
-                    <td className="py-5 px-6 text-gray-500 dark:text-gray-400 font-semibold text-sm">
-                      {new Date(order.createdAt).toLocaleDateString()}
-                    </td>
-                    <td className="py-5 px-8 text-center">
-                      {generateMapLink(order.deliveryAddress?.geoLocation?.lat, order.deliveryAddress?.geoLocation?.lon) ? (
-                        <a
-                          href={generateMapLink(order.deliveryAddress?.geoLocation?.lat, order.deliveryAddress?.geoLocation?.lon)}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="relative overflow-hidden bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200 border border-gray-200 dark:border-gray-700 hover:border-orange-500 dark:hover:border-orange-500 px-5 py-2.5 rounded-xl text-sm font-black transition-all duration-300 shadow-sm hover:shadow-lg hover:shadow-orange-500/20 hover:text-orange-600 dark:hover:text-orange-400 group/btn flex items-center justify-center gap-2 inline-flex"
-                        >
-                          <span className="relative z-10 flex items-center gap-2">
-                            <FaMapMarkedAlt className="text-lg" />
-                            Navigate
-                          </span>
-                          <div className="absolute inset-0 w-full h-full bg-gradient-to-r from-orange-100/50 to-orange-50/50 dark:from-orange-500/10 dark:to-transparent translate-x-[-100%] group-hover/btn:translate-x-0 transition-transform duration-300"></div>
-                        </a>
-                      ) : (
-                        <span className="text-xs text-gray-400 dark:text-gray-500 font-semibold italic bg-gray-50 dark:bg-gray-800/50 px-3 py-1.5 rounded-lg border border-gray-100 dark:border-gray-700/50 block w-max mx-auto">No Location Data</span>
-                      )}
-                    </td>
-                  </tr>
-                ))
-              ) : (
-                <tr className="border-b border-(--color-secondary)">
-                  <td
-                    colSpan="6"
-                    className="text-center py-8 text-(--color-neutral) font-medium"
-                  >
-                    No orders yet
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
+    <div className="overflow-y-auto h-full space-y-6 pb-12">
+      {/* Top Header */}
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div>
+          <h2 className="text-2xl sm:text-3xl font-extrabold text-gray-900 dark:text-white">
+            Delivery Operations Hub
+          </h2>
+          <p className="text-sm text-gray-500 font-medium">
+            Manage your live delivery missions, claim available orders, and track delivered tasks
+          </p>
         </div>
+        <button
+          onClick={() => fetchAllRiderData(true)}
+          disabled={loading}
+          className="flex items-center gap-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs sm:text-sm font-semibold rounded-xl transition-all shadow-sm"
+        >
+          <IoRefreshOutline className={`text-base ${loading ? "animate-spin" : ""}`} />
+          Refresh Deliveries
+        </button>
+      </div>
 
-        {/* Mobile Card View */}
-        <div className="md:hidden flex flex-col gap-5 p-2 pb-5">
-          {loading && orders.length === 0 ? (
-             <div className="flex justify-center items-center h-32">
-               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-500"></div>
-             </div>
-          ) : orders.length > 0 ? (
-            orders.map((order) => (
-              <div key={order._id} className="bg-gradient-to-br from-white/95 to-white/80 dark:from-gray-900/90 dark:to-gray-800/80 p-5 rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.06)] dark:shadow-[0_8px_30px_rgb(0,0,0,0.3)] border border-white/60 dark:border-gray-700/60 flex flex-col gap-4 relative overflow-hidden group">
-                <div className="absolute inset-0 bg-gradient-to-br from-orange-500/5 to-transparent pointer-events-none"></div>
+      {/* Tabs */}
+      <div className="flex items-center gap-3 border-b border-gray-200 dark:border-gray-800 pb-3">
+        <button
+          onClick={() => setActiveTab("active")}
+          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all relative ${
+            activeTab === "active"
+              ? "bg-(--color-primary) text-white shadow-md shadow-orange-500/20"
+              : "bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-gray-200"
+          }`}
+        >
+          <FaMotorcycle />
+          <span>Active Mission</span>
+          {activeOrder && (
+            <span className="w-2.5 h-2.5 rounded-full bg-green-400 animate-ping absolute -top-1 -right-1"></span>
+          )}
+        </button>
 
-                <div className="flex justify-between items-start border-b border-gray-100/80 dark:border-gray-700/50 pb-4 relative z-10">
-                  <div>
-                    <h3 className="font-extrabold text-gray-900 dark:text-gray-100 text-lg group-hover:text-orange-600 dark:group-hover:text-orange-400 transition-colors">
-                      #{order._id.substring(0, 8).toUpperCase()}
-                    </h3>
-                    <p className="text-xs text-gray-500 dark:text-gray-400 font-semibold mt-0.5">{new Date(order.createdAt).toLocaleDateString()}</p>
+        <button
+          onClick={() => setActiveTab("available")}
+          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all ${
+            activeTab === "available"
+              ? "bg-(--color-primary) text-white shadow-md shadow-orange-500/20"
+              : "bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-gray-200"
+          }`}
+        >
+          <FaBoxOpen />
+          <span>Available Orders</span>
+          <span className="px-1.5 py-0.2 text-[10px] rounded-full bg-black/10 dark:bg-white/20">
+            {availableOrders.length}
+          </span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab("history")}
+          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all ${
+            activeTab === "history"
+              ? "bg-(--color-primary) text-white shadow-md shadow-orange-500/20"
+              : "bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-gray-200"
+          }`}
+        >
+          <FaHistory />
+          <span>Delivery History</span>
+          <span className="px-1.5 py-0.2 text-[10px] rounded-full bg-black/10 dark:bg-white/20">
+            {historyOrders.length}
+          </span>
+        </button>
+      </div>
+
+      {/* ── TAB 1: ACTIVE MISSION ─────────────────────────────────────────── */}
+      {activeTab === "active" && (
+        <div className="space-y-6">
+          {activeOrder ? (
+            <div className="bg-white dark:bg-gray-900 rounded-3xl p-6 sm:p-8 border border-orange-200 dark:border-orange-900/30 shadow-xl relative overflow-hidden">
+              <div className="absolute top-0 left-0 right-0 h-2 bg-gradient-to-r from-orange-500 via-amber-500 to-green-500"></div>
+
+              {/* Status Banner */}
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 border-b border-gray-100 dark:border-gray-800 pb-5 mb-6">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-bold text-gray-400 uppercase tracking-widest">
+                      Current Task
+                    </span>
+                    <span className="px-2.5 py-0.5 rounded-full text-xs font-black bg-orange-100 text-orange-800 border border-orange-200 uppercase">
+                      #{activeOrder._id.slice(-6).toUpperCase()}
+                    </span>
                   </div>
-                  <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black shadow-sm border uppercase tracking-widest ${
-                    order.orderStatus === "delivered" ? "bg-green-50/80 text-green-700 border-green-200/50 dark:bg-green-500/10 dark:text-green-400 dark:border-green-500/20" :
-                    order.orderStatus === "pending" || order.orderStatus === "preparing" ? "bg-yellow-50/80 text-yellow-700 border-yellow-200/50 dark:bg-yellow-500/10 dark:text-yellow-400 dark:border-yellow-500/20" :
-                    "bg-red-50/80 text-red-700 border-red-200/50 dark:bg-red-500/10 dark:text-red-400 dark:border-red-500/20"
-                  }`}>
-                    <span className={`w-1.5 h-1.5 rounded-full animate-pulse ${
-                      order.orderStatus === "delivered" ? "bg-green-500" :
-                      order.orderStatus === "pending" || order.orderStatus === "preparing" ? "bg-yellow-500" :
-                      "bg-red-500"
-                    }`}></span>
-                    {order.orderStatus}
+                  <h3 className="text-xl sm:text-2xl font-black text-gray-900 dark:text-white mt-1">
+                    {activeOrder.orderStatus === "pickedUp" || activeOrder.orderStatus === "outForDelivery"
+                      ? "En Route to Customer Dropoff 🛵"
+                      : "Head to Restaurant for Pickup 🏪"}
+                  </h3>
+                </div>
+
+                <div className="flex items-center gap-3">
+                  <span className="text-xs font-semibold text-gray-500">Status:</span>
+                  <span className="px-3 py-1 rounded-xl text-xs font-extrabold uppercase tracking-wider bg-blue-50 text-blue-700 border border-blue-200">
+                    {activeOrder.orderStatus}
                   </span>
                 </div>
-                
-                <div className="flex justify-between items-center relative z-10">
-                  <div>
-                    <p className="text-[10px] text-gray-400 dark:text-gray-500 uppercase tracking-widest font-bold mb-1">Restaurant</p>
-                    <p className="font-bold text-gray-800 dark:text-gray-200 text-sm">{order.restaurantId?.restaurantName || "Unknown"}</p>
+              </div>
+
+              {/* 2-Column: Step 1 Pickup vs Step 2 Delivery */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+                {/* 1. Restaurant Pickup Point */}
+                <div className="bg-orange-50/60 dark:bg-gray-800/60 rounded-2xl p-5 border border-orange-100 dark:border-gray-700 space-y-4">
+                  <div className="flex justify-between items-start">
+                    <div className="flex items-center gap-2 text-(--color-primary) font-bold text-sm uppercase tracking-wide">
+                      <FaStore />
+                      <span>Step 1: Pickup Point</span>
+                    </div>
+                    {generateMapLink(
+                      activeOrder.restaurantId?.geoLocation?.lat,
+                      activeOrder.restaurantId?.geoLocation?.lon
+                    ) && (
+                      <a
+                        href={generateMapLink(
+                          activeOrder.restaurantId?.geoLocation?.lat,
+                          activeOrder.restaurantId?.geoLocation?.lon
+                        )}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1.5 px-3 py-1 bg-white dark:bg-gray-700 text-orange-600 dark:text-orange-400 rounded-lg text-xs font-bold shadow-sm hover:bg-orange-50 transition-colors"
+                      >
+                        <FaRoute /> Map Direction
+                      </a>
+                    )}
                   </div>
-                  <div className="text-right">
-                    <p className="text-[10px] text-gray-400 dark:text-gray-500 uppercase tracking-widest font-bold mb-1">Amount</p>
-                    <p className="font-black text-lg text-transparent bg-clip-text bg-gradient-to-r from-orange-600 to-orange-400 dark:from-orange-400 dark:to-orange-300">₹{order.billDetails?.finalAmount || 0}</p>
+
+                  <div>
+                    <h4 className="text-lg font-black text-gray-900 dark:text-white">
+                      {activeOrder.restaurantId?.restaurantName || "Restaurant Partner"}
+                    </h4>
+                    <p className="text-xs text-gray-600 dark:text-gray-300 mt-1 flex items-start gap-1">
+                      <IoLocationSharp className="text-red-500 shrink-0 text-sm mt-0.5" />
+                      <span>
+                        {activeOrder.restaurantId?.address}, {activeOrder.restaurantId?.city}
+                      </span>
+                    </p>
+                    {activeOrder.restaurantId?.phone && (
+                      <a
+                        href={`tel:${activeOrder.restaurantId.phone}`}
+                        className="inline-flex items-center gap-1.5 mt-2 text-xs font-bold text-blue-600 dark:text-blue-400 hover:underline"
+                      >
+                        <FaPhoneAlt size={10} /> Call Restaurant: {activeOrder.restaurantId.phone}
+                      </a>
+                    )}
+                  </div>
+
+                  {/* Food Items Checklist */}
+                  <div className="pt-2 border-t border-orange-100 dark:border-gray-700">
+                    <p className="text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1.5">
+                      Items to Pick Up ({activeOrder.orderItems?.length || 0})
+                    </p>
+                    <div className="space-y-1 text-xs">
+                      {activeOrder.orderItems?.map((it, idx) => (
+                        <div key={idx} className="flex justify-between items-center text-gray-700 dark:text-gray-300">
+                          <span>{it.itemDetails?.itemName || "Food Item"}</span>
+                          <span className="font-bold text-gray-900 dark:text-white">× {it.quantity}</span>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 </div>
 
-                <div className="pt-2 relative z-10">
-                  {generateMapLink(order.deliveryAddress?.geoLocation?.lat, order.deliveryAddress?.geoLocation?.lon) ? (
-                    <a
-                      href={generateMapLink(order.deliveryAddress?.geoLocation?.lat, order.deliveryAddress?.geoLocation?.lon)}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="w-full mt-2 relative overflow-hidden bg-orange-50 dark:bg-orange-900/20 text-orange-600 dark:text-orange-400 border border-orange-200/50 dark:border-orange-500/30 py-3 rounded-xl text-sm font-black transition-all duration-300 hover:shadow-lg hover:shadow-orange-500/20 group/btn flex items-center justify-center gap-2"
-                    >
-                      <span className="relative z-10 flex items-center gap-2">
-                        <FaMapMarkedAlt className="text-lg" /> Navigate to Customer
-                      </span>
-                      <div className="absolute inset-0 w-full h-full bg-gradient-to-r from-orange-100/80 to-orange-50/50 dark:from-orange-500/20 dark:to-transparent translate-x-[-100%] group-hover/btn:translate-x-0 transition-transform duration-300"></div>
-                    </a>
-                  ) : (
-                    <div className="w-full text-center text-gray-400 dark:text-gray-500 py-3 text-sm font-semibold italic border border-dashed rounded-xl border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/50">
-                      Location data unavailable
+                {/* 2. Customer Dropoff Point */}
+                <div className="bg-blue-50/60 dark:bg-gray-800/60 rounded-2xl p-5 border border-blue-100 dark:border-gray-700 space-y-4">
+                  <div className="flex justify-between items-start">
+                    <div className="flex items-center gap-2 text-blue-600 dark:text-blue-400 font-bold text-sm uppercase tracking-wide">
+                      <FaUser />
+                      <span>Step 2: Dropoff Customer</span>
                     </div>
+                    {generateMapLink(
+                      activeOrder.deliveryAddress?.geoLocation?.lat,
+                      activeOrder.deliveryAddress?.geoLocation?.lon
+                    ) && (
+                      <a
+                        href={generateMapLink(
+                          activeOrder.deliveryAddress?.geoLocation?.lat,
+                          activeOrder.deliveryAddress?.geoLocation?.lon
+                        )}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1.5 px-3 py-1 bg-white dark:bg-gray-700 text-blue-600 dark:text-blue-400 rounded-lg text-xs font-bold shadow-sm hover:bg-blue-50 transition-colors"
+                      >
+                        <FaRoute /> Map Direction
+                      </a>
+                    )}
+                  </div>
+
+                  <div>
+                    <h4 className="text-lg font-black text-gray-900 dark:text-white">
+                      {activeOrder.deliveryAddress?.name ||
+                        activeOrder.customerId?.customerId?.fullName ||
+                        "Customer"}
+                    </h4>
+                    <p className="text-xs text-gray-600 dark:text-gray-300 mt-1 flex items-start gap-1">
+                      <IoLocationSharp className="text-blue-500 shrink-0 text-sm mt-0.5" />
+                      <span>
+                        {activeOrder.deliveryAddress?.address}, {activeOrder.deliveryAddress?.city}
+                      </span>
+                    </p>
+                    {activeOrder.deliveryAddress?.phone && (
+                      <a
+                        href={`tel:${activeOrder.deliveryAddress.phone}`}
+                        className="inline-flex items-center gap-1.5 mt-2 text-xs font-bold text-blue-600 dark:text-blue-400 hover:underline"
+                      >
+                        <FaPhoneAlt size={10} /> Call Customer: {activeOrder.deliveryAddress.phone}
+                      </a>
+                    )}
+                  </div>
+
+                  {/* Payment Info */}
+                  <div className="pt-2 border-t border-blue-100 dark:border-gray-700">
+                    <p className="text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1">
+                      Payment Collection
+                    </p>
+                    <div className="flex items-center justify-between text-xs font-bold">
+                      <span className="capitalize">
+                        Mode: {activeOrder.paymentDetails?.paymentMethod || "COD"}
+                      </span>
+                      <span
+                        className={`px-2 py-0.5 rounded text-[11px] font-black ${
+                          activeOrder.paymentDetails?.paymentMethod === "cod" &&
+                          activeOrder.paymentDetails?.paymentStatus !== "completed"
+                            ? "bg-amber-100 text-amber-800 border border-amber-300"
+                            : "bg-green-100 text-green-800 border border-green-300"
+                        }`}
+                      >
+                        {activeOrder.paymentDetails?.paymentMethod === "cod" &&
+                        activeOrder.paymentDetails?.paymentStatus !== "completed"
+                          ? `Collect Cash: ₹${activeOrder.billDetails?.finalAmount || 0}`
+                          : "Paid Online ✅ (Do NOT Collect)"}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Action Buttons Progress Workflow */}
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-4 border-t border-gray-100 dark:border-gray-800">
+                <div className="text-xs text-gray-500 font-medium">
+                  Follow the sequence: <strong className="text-gray-800 dark:text-gray-200">Pick Up ➔ Out for Delivery ➔ Delivered</strong>
+                </div>
+
+                <div className="flex items-center gap-3 w-full sm:w-auto">
+                  {/* Action 1: Confirm Pickup */}
+                  {["accepted", "preparing", "ready"].includes(activeOrder.orderStatus) && (
+                    <button
+                      onClick={() => handleUpdateStatus(activeOrder._id, "pickedUp")}
+                      disabled={actionLoading}
+                      className="w-full sm:w-auto px-6 py-3 bg-gradient-to-r from-orange-500 to-amber-600 text-white font-extrabold rounded-xl shadow-lg shadow-orange-500/25 hover:opacity-95 transition-all text-xs sm:text-sm flex items-center justify-center gap-2"
+                    >
+                      <FaBoxOpen />
+                      <span>Confirm Order Picked Up</span>
+                    </button>
+                  )}
+
+                  {/* Action 2: Out for Delivery */}
+                  {activeOrder.orderStatus === "pickedUp" && (
+                    <button
+                      onClick={() => handleUpdateStatus(activeOrder._id, "outForDelivery")}
+                      disabled={actionLoading}
+                      className="w-full sm:w-auto px-6 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-extrabold rounded-xl shadow-lg shadow-blue-500/25 hover:opacity-95 transition-all text-xs sm:text-sm flex items-center justify-center gap-2"
+                    >
+                      <FaMotorcycle />
+                      <span>Start Ride (Out for Delivery)</span>
+                    </button>
+                  )}
+
+                  {/* Action 3: Mark Delivered */}
+                  {["pickedUp", "outForDelivery", "onTheWay"].includes(activeOrder.orderStatus) && (
+                    <button
+                      onClick={() => handleUpdateStatus(activeOrder._id, "delivered")}
+                      disabled={actionLoading}
+                      className="w-full sm:w-auto px-6 py-3 bg-gradient-to-r from-green-600 to-emerald-600 text-white font-extrabold rounded-xl shadow-lg shadow-green-500/25 hover:opacity-95 transition-all text-xs sm:text-sm flex items-center justify-center gap-2"
+                    >
+                      <FaCheckCircle />
+                      <span>Mark Delivered & Complete</span>
+                    </button>
                   )}
                 </div>
               </div>
-            ))
+            </div>
           ) : (
-            <div className="text-center py-12 text-gray-500 dark:text-gray-400 font-semibold bg-white/50 dark:bg-black/20 backdrop-blur-sm rounded-3xl border border-gray-100 dark:border-gray-800 shadow-sm">
-              No orders yet.
+            <div className="bg-white dark:bg-gray-900 rounded-3xl p-12 text-center border border-gray-100 dark:border-gray-800 shadow-sm space-y-3">
+              <FaMotorcycle className="mx-auto text-5xl text-gray-300 dark:text-gray-600 animate-bounce" />
+              <h3 className="text-xl font-black text-gray-900 dark:text-white">
+                No Active Delivery Right Now
+              </h3>
+              <p className="text-xs sm:text-sm text-gray-500 max-w-md mx-auto">
+                You are ready to take new delivery orders! Switch to the <strong>"Available Orders"</strong> tab to claim ready food tasks.
+              </p>
+              <button
+                onClick={() => setActiveTab("available")}
+                className="mt-2 inline-flex items-center gap-2 px-5 py-2.5 bg-(--color-primary) text-white font-bold rounded-xl text-xs shadow-md shadow-orange-500/20 hover:opacity-90 transition-opacity"
+              >
+                Browse Available Orders <IoArrowForward />
+              </button>
             </div>
           )}
         </div>
-      </div>
+      )}
+
+      {/* ── TAB 2: AVAILABLE ORDERS TO CLAIM ───────────────────────────────── */}
+      {activeTab === "available" && (
+        <div className="space-y-4">
+          {availableOrders.length === 0 ? (
+            <div className="bg-white dark:bg-gray-900 rounded-3xl p-12 text-center border border-gray-100 dark:border-gray-800 shadow-sm space-y-2">
+              <FaBoxOpen className="mx-auto text-4xl text-gray-400" />
+              <h3 className="text-lg font-bold text-gray-800 dark:text-white">
+                No Unclaimed Orders Right Now
+              </h3>
+              <p className="text-xs text-gray-500">
+                New food delivery tasks will appear here as soon as restaurants prepare them. Auto-refreshing every 15 seconds.
+              </p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {availableOrders.map((order) => {
+                const restName = order.restaurantId?.restaurantName || "Restaurant";
+                const custArea = order.deliveryAddress?.city || "Local Dropoff";
+                const itemCount = order.orderItems?.length || 1;
+                const earning = order.billDetails?.deliveryCharge > 0 ? order.billDetails.deliveryCharge : 40;
+
+                return (
+                  <div
+                    key={order._id}
+                    className="bg-white dark:bg-gray-900 rounded-2xl p-5 border border-gray-100 dark:border-gray-800 shadow-sm hover:shadow-md transition-shadow flex flex-col justify-between gap-4"
+                  >
+                    <div>
+                      {/* Card Header */}
+                      <div className="flex justify-between items-start border-b border-gray-100 dark:border-gray-800 pb-3 mb-3">
+                        <div>
+                          <span className="font-extrabold text-gray-900 dark:text-white text-base">
+                            #{order._id.slice(-6).toUpperCase()}
+                          </span>
+                          <p className="text-xs text-gray-400 font-medium">
+                            Placed {new Date(order.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                          </p>
+                        </div>
+                        <span className="px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider bg-amber-50 text-amber-700 border border-amber-200">
+                          {order.orderStatus}
+                        </span>
+                      </div>
+
+                      {/* Pickup & Drop Summary */}
+                      <div className="space-y-2 text-xs">
+                        <div className="flex items-start gap-2 text-gray-700 dark:text-gray-300">
+                          <FaStore className="text-orange-500 shrink-0 mt-0.5" />
+                          <div>
+                            <p className="font-bold">{restName}</p>
+                            <p className="text-gray-500 text-[11px] truncate max-w-xs">{order.restaurantId?.address}</p>
+                          </div>
+                        </div>
+
+                        <div className="flex items-start gap-2 text-gray-700 dark:text-gray-300">
+                          <IoLocationSharp className="text-blue-500 shrink-0 mt-0.5" />
+                          <div>
+                            <p className="font-bold">Deliver to: {order.deliveryAddress?.name || "Customer"}</p>
+                            <p className="text-gray-500 text-[11px] truncate max-w-xs">{order.deliveryAddress?.address}, {custArea}</p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Card Footer: Estimated Earning & Claim Button */}
+                    <div className="pt-3 border-t border-gray-100 dark:border-gray-800 flex items-center justify-between">
+                      <div>
+                        <p className="text-[10px] text-gray-400 uppercase font-bold tracking-wider">
+                          Delivery Earning
+                        </p>
+                        <p className="text-lg font-black text-green-600">
+                          +₹{earning}
+                        </p>
+                      </div>
+
+                      <button
+                        onClick={() => handleClaimOrder(order._id)}
+                        disabled={actionLoading}
+                        className="px-5 py-2 bg-gradient-to-r from-(--color-primary) to-orange-500 text-white text-xs font-bold rounded-xl shadow-md shadow-orange-500/20 hover:opacity-95 transition-all flex items-center gap-1.5"
+                      >
+                        <FaMotorcycle />
+                        <span>Claim Task</span>
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ── TAB 3: DELIVERY HISTORY ───────────────────────────────────────── */}
+      {activeTab === "history" && (
+        <div className="space-y-4">
+          {historyOrders.length === 0 ? (
+            <div className="bg-white dark:bg-gray-900 rounded-3xl p-12 text-center border border-gray-100 dark:border-gray-800 shadow-sm">
+              <FaHistory className="mx-auto text-4xl text-gray-400 mb-2" />
+              <h3 className="text-lg font-bold text-gray-800 dark:text-white">
+                No Completed Deliveries Yet
+              </h3>
+              <p className="text-xs text-gray-500">
+                Your successfully delivered orders will appear here along with your earnings summary.
+              </p>
+            </div>
+          ) : (
+            <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-800 overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="w-full text-xs sm:text-sm text-left">
+                  <thead className="bg-gray-50 dark:bg-gray-800 text-gray-500 uppercase tracking-wider text-[11px] font-bold">
+                    <tr>
+                      <th className="py-3.5 px-4">Order ID</th>
+                      <th className="py-3.5 px-4">Restaurant</th>
+                      <th className="py-3.5 px-4">Customer</th>
+                      <th className="py-3.5 px-4">Delivered Date</th>
+                      <th className="py-3.5 px-4">Payout Earned</th>
+                      <th className="py-3.5 px-4">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100 dark:divide-gray-800 font-medium">
+                    {historyOrders.map((ord) => {
+                      const earning = ord.billDetails?.deliveryCharge > 0 ? ord.billDetails.deliveryCharge : 40;
+                      return (
+                        <tr key={ord._id} className="hover:bg-gray-50/50 dark:hover:bg-gray-800/40 transition-colors">
+                          <td className="py-3 px-4 font-bold text-gray-900 dark:text-white">
+                            #{ord._id.slice(-6).toUpperCase()}
+                          </td>
+                          <td className="py-3 px-4">{ord.restaurantId?.restaurantName || "Partner"}</td>
+                          <td className="py-3 px-4">{ord.deliveryAddress?.name || "Customer"}</td>
+                          <td className="py-3 px-4 text-gray-500">
+                            {new Date(ord.updatedAt || ord.createdAt).toLocaleDateString([], {
+                              day: "numeric",
+                              month: "short",
+                              hour: "2-digit",
+                              minute: "2-digit",
+                            })}
+                          </td>
+                          <td className="py-3 px-4 font-black text-green-600">+₹{earning}</td>
+                          <td className="py-3 px-4">
+                            <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-green-100 text-green-700 border border-green-200">
+                              {ord.orderStatus}
+                            </span>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 };

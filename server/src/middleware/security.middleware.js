@@ -12,10 +12,11 @@ export const generalLimiter = rateLimit({
   },
 });
 
-// Sensitive Auth Rate Limiter: 20 requests per 15 minutes per IP
+// Sensitive Auth Rate Limiter: 30 requests per 15 minutes in prod, higher for dev/test
 export const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 20,
+  max: process.env.NODE_ENV === "production" ? 30 : 500,
+  skip: (req) => process.env.NODE_ENV !== "production" && (req.ip === "127.0.0.1" || req.ip === "::1" || req.ip === "::ffff:127.0.0.1"),
   standardHeaders: true,
   legacyHeaders: false,
   message: {

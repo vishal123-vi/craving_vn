@@ -8,12 +8,16 @@ export const genToken = async (user, res) => {
       expiresIn: "1d",
     });
 
+    const isProduction = process.env.NODE_ENV === "production";
+
     res.cookie("Oreo", token, {
       maxAge: 1000 * 60 * 60 * 24,
       httpOnly: true,
-      secure: true,
-      sameSite: "none",
+      secure: isProduction,
+      sameSite: isProduction ? "none" : "lax",
     });
+
+    return token;
   } catch (error) {
     throw error;
   }
@@ -27,12 +31,16 @@ export const genOTPToken = async (user, res) => {
       expiresIn: "10m",
     });
 
+    const isProduction = process.env.NODE_ENV === "production";
+
     res.cookie("kitkat", token, {
       maxAge: 1000 * 60 * 10,
       httpOnly: true,
-      secure: true,
-      sameSite: "none",
+      secure: isProduction,
+      sameSite: isProduction ? "none" : "lax",
     });
+
+    return token;
   } catch (error) {
     throw error;
   }

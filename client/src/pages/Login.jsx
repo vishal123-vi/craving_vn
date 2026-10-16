@@ -58,9 +58,12 @@ const Login = () => {
       });
       toast.success(res.data.message);
       sessionStorage.setItem("cravingUser", JSON.stringify(res.data.data));
+      if (res.data.token) {
+        sessionStorage.setItem("token", res.data.token);
+        localStorage.setItem("token", res.data.token);
+      }
       setUser(res.data.data);
       setIsLogin(true);
-      //console.log(res.data.data.userType);
       setRole(res.data.data.userType);
 
       const userType = res.data.data.userType;

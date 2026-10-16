@@ -84,6 +84,8 @@ const RestaurantDashboard = () => {
     return <div className="h-[calc(100vh-64px)] flex items-center justify-center">Loading dashboard...</div>;
   }
 
+  const activeRestaurant = restaurants.find(r => r._id === activeRestaurantId) || restaurants[0];
+
   return (
     <div className="h-[calc(100vh-64px)] flex flex-col lg:flex-row overflow-hidden relative">
       {/* Mobile Header for Hamburger */}
@@ -125,6 +127,48 @@ const RestaurantDashboard = () => {
 
       {/* Main Content */}
       <div className="flex-1 bg-(--color-base-100) p-4 rounded-2xl shadow-xl h-full overflow-y-auto w-full">
+        {/* Admin Approval & Status Notice Banner */}
+        {activeRestaurant && activeRestaurant.status === "inactive" && (
+          <div className="mb-4 p-3.5 bg-amber-50 border border-amber-200 text-amber-800 rounded-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-sm shadow-sm animate-in fade-in duration-300">
+            <div className="flex items-center gap-2.5">
+              <span className="p-1.5 bg-amber-100 rounded-lg text-amber-700 text-base">⏳</span>
+              <div>
+                <p className="font-bold text-amber-900">Awaiting Admin Approval</p>
+                <p className="text-xs text-amber-700">Your restaurant is currently under review by our Admin team. You can configure your profile and menu, but you cannot open the store for live orders until approved.</p>
+              </div>
+            </div>
+            <span className="shrink-0 px-2.5 py-1 text-xs font-bold rounded-full bg-amber-200 text-amber-800 uppercase tracking-wider">Pending Review</span>
+          </div>
+        )}
+
+        {activeRestaurant && activeRestaurant.status === "blocked" && (
+          <div className="mb-4 p-3.5 bg-red-50 border border-red-200 text-red-800 rounded-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-sm shadow-sm animate-in fade-in duration-300">
+            <div className="flex items-center gap-2.5">
+              <span className="p-1.5 bg-red-100 rounded-lg text-red-700 text-base">⛔</span>
+              <div>
+                <p className="font-bold text-red-900">Account Suspended</p>
+                <p className="text-xs text-red-700">This restaurant has been suspended by Admin. Store opening and menu modifications are locked. Please contact support.</p>
+              </div>
+            </div>
+            <span className="shrink-0 px-2.5 py-1 text-xs font-bold rounded-full bg-red-200 text-red-800 uppercase tracking-wider">Suspended</span>
+          </div>
+        )}
+
+        {!activeRestaurant && restaurants.length === 0 && (
+          <div className="mb-4 p-4 bg-orange-50 border border-orange-200 text-orange-900 rounded-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-sm shadow-sm">
+            <div>
+              <p className="font-bold text-orange-950">No Restaurant Profile Created Yet</p>
+              <p className="text-xs text-orange-700">Complete your restaurant profile, legal documents, and financial details in Settings to submit for Admin approval.</p>
+            </div>
+            <button 
+              onClick={() => setActiveTab("settings")}
+              className="px-4 py-2 bg-(--color-primary) text-white font-semibold rounded-lg text-xs hover:opacity-90 transition-opacity"
+            >
+              Setup Restaurant
+            </button>
+          </div>
+        )}
+
         {activeTab === "overview" && <RestaurantOverview activeRestaurantId={activeRestaurantId} restaurants={restaurants} refreshRestaurants={fetchRestaurants} />}
         {activeTab === "menu" && <RestaurantMenu activeRestaurantId={activeRestaurantId} />}
         {activeTab === "orders" && <RestaurantOrders activeRestaurantId={activeRestaurantId} />}

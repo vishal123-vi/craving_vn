@@ -75,9 +75,10 @@ export const FeedbackForm = async (req, res, next) => {
 
 export const getRestaurants = async (req, res, next) => {
   try {
-    // Show all open restaurants to customers regardless of status
+    // Show restaurants that are both approved by Admin and opened by Manager
     const restaurants = await Restaurant.find({ 
-      isOpen: true 
+      isOpen: true,
+      status: "active"
     }).select("-documents -financialDetails -contactDetails");
     
     res.status(200).json({

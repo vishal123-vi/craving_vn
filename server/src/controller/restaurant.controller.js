@@ -30,13 +30,50 @@ export const restaurantUpdateProfile = async (req, res, next) => {
     const restaurantImageFromFE = req.files?.restaurantImage;
     const { restaurantId } = req.body;
 
-    const dataKeys = Object.keys(restaurantDataFromFE).filter(k => k !== 'restaurantId');
+    // Security Whitelist: Only allow legitimate restaurant editable fields
+    // Privileged fields like status (approval), averageRating, numReviews, and managerId are strictly protected
+    const allowedRestaurantFields = [
+      "restaurantName",
+      "address",
+      "city",
+      "state",
+      "pinCode",
+      "country",
+      "geoLocation",
+      "documents",
+      "financialDetails",
+      "contactDetails",
+      "servingHours",
+      "isOpen",
+      "cuisineTypes",
+      "description",
+      "restaurantType",
+      "socialMediaLinks",
+      "coverImage",
+      "restaurantImage",
+    ];
 
     let existingRestaurant = null;
     if (restaurantId) {
       existingRestaurant = await Restaurant.findOne({
         _id: restaurantId,
         managerId: currentUser._id,
+      });
+
+      if (!existingRestaurant) {
+        return res.status(404).json({
+          message: "Restaurant profile not found or unauthorized",
+        });
+      }
+    } else {
+      existingRestaurant = await Restaurant.findOne({
+        managerId: currentUser._id,
+      });
+    }
+
+    if (existingRestaurant && existingRestaurant.status === "blocked") {
+      return res.status(403).json({
+        message: "Restaurant account has been suspended by Admin.",
       });
     }
 
@@ -54,7 +91,6 @@ export const restaurantUpdateProfile = async (req, res, next) => {
           coverImageFromFE,
           `restaurant/${currentUser.phone}/coverPhoto`,
         );
-        dataKeys.push("coverImage");
         restaurantDataFromFE.coverImage = coverImage;
       }
 
@@ -63,14 +99,22 @@ export const restaurantUpdateProfile = async (req, res, next) => {
           restaurantImageFromFE,
           `restaurant/${currentUser.phone}/restaurantPhotos`,
         );
-        dataKeys.push("restaurantImage");
         restaurantDataFromFE.restaurantImage = restaurantImage;
       }
 
-      const newRestaurant = await Restaurant.create({
+      const restaurantPayload = {
         managerId: currentUser._id,
-        ...restaurantDataFromFE,
+        status: "inactive",
+        averageRating: 0,
+        numReviews: 0,
+      };
+      allowedRestaurantFields.forEach((key) => {
+        if (restaurantDataFromFE[key] !== undefined) {
+          restaurantPayload[key] = restaurantDataFromFE[key];
+        }
       });
+
+      const newRestaurant = await Restaurant.create(restaurantPayload);
       return res.status(201).json({
         message: "Restaurant profile created successfully",
         data: newRestaurant,
@@ -83,7 +127,6 @@ export const restaurantUpdateProfile = async (req, res, next) => {
           coverImageFromFE,
           `restaurant/${currentUser.phone}/coverPhoto`,
         );
-        dataKeys.push("coverImage");
         restaurantDataFromFE.coverImage = coverImage;
       }
       if (restaurantDataFromFE.existingRestaurantImages) {
@@ -103,7 +146,6 @@ export const restaurantUpdateProfile = async (req, res, next) => {
           
           // Temporarily set restaurantDataFromFE.restaurantImage to keptImages
           restaurantDataFromFE.restaurantImage = keptImages;
-          dataKeys.push("restaurantImage");
         } catch (e) {
           console.error("Failed to parse existingRestaurantImages", e);
         }
@@ -115,14 +157,13 @@ export const restaurantUpdateProfile = async (req, res, next) => {
           `restaurant/${currentUser.phone}/restaurantPhotos`,
         );
         
-        dataKeys.push("restaurantImage");
         if (restaurantDataFromFE.restaurantImage) {
            restaurantDataFromFE.restaurantImage = [...restaurantDataFromFE.restaurantImage, ...newImages];
         } else {
            restaurantDataFromFE.restaurantImage = newImages;
         }
       }
-      dataKeys.forEach((key) => {
+      allowedRestaurantFields.forEach((key) => {
         if (restaurantDataFromFE[key] !== undefined) {
           existingRestaurant.set(key, restaurantDataFromFE[key]);
         }
@@ -157,6 +198,15 @@ export const toggleRestaurantStatus = async (req, res, next) => {
         message: "Restaurant profile not found",
         data: null,
       });
+    }
+
+    // Security check: Only allow opening if Admin has approved the restaurant
+    if (!existingRestaurant.isOpen && existingRestaurant.status !== "active") {
+      const msg =
+        existingRestaurant.status === "blocked"
+          ? "Your restaurant account has been suspended by Admin."
+          : "Restaurant is awaiting Admin approval. It cannot be opened until approved.";
+      return res.status(403).json({ message: msg });
     }
 
     existingRestaurant.isOpen = !existingRestaurant.isOpen;

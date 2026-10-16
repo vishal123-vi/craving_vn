@@ -32,12 +32,12 @@ const TestPaymentButton = ({ amount = 100 }) => {
 
       // 3. Configure Checkout options
       const options = {
-        key: data.keyId,
+        key: data.keyId || data.key,
         amount: data.amount,
         currency: data.currency,
         name: "Cravings Delivery",
         description: "Test Transaction",
-        order_id: data.orderId,
+        order_id: data.orderId || data.razorpayOrderId,
         handler: async function (response) {
           try {
             // 4. Verify payment on the server

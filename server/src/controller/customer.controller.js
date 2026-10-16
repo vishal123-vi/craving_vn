@@ -28,12 +28,14 @@ export const getCustomerProfile = async (req, res, next) => {
 // ─── POST /customer/address ──────────────────────────────────────────────────
 export const addCustomerAddress = async (req, res, next) => {
   try {
-    const { name, address, city, state, pinCode, country = "India", addressType = "home", isDefault = false, geoLocation } = req.body;
+    const { name, address, city, state, country = "India", addressType = "home", isDefault = false, geoLocation } = req.body;
+    const pinCode = req.body.pinCode || req.body.pincode;
+    const resolvedName = name || req.user?.fullName || "Customer";
 
-    if (!name || !address || !city || !state || !pinCode) {
+    if (!address || !city || !state || !pinCode) {
       return res.status(400).json({
         success: false,
-        message: "Name, address, city, state, and pinCode are required",
+        message: "Address, city, state, and pinCode are required",
       });
     }
 
@@ -47,11 +49,11 @@ export const addCustomerAddress = async (req, res, next) => {
     }
 
     const newAddress = {
-      name,
+      name: resolvedName,
       address,
       city,
       state,
-      pinCode,
+      pinCode: String(pinCode),
       country,
       addressType,
       isDefault: isDefault || customer.addressBook.length === 0,
@@ -71,7 +73,7 @@ export const addCustomerAddress = async (req, res, next) => {
   }
 };
 
-// ─── PUT /customer/address/:addressId ────────────────────────────────────────
+// ─── PUT /customer/address/:addressId ─────────────────────────────────────────
 export const updateCustomerAddress = async (req, res, next) => {
   try {
     const { addressId } = req.params;
@@ -85,7 +87,10 @@ export const updateCustomerAddress = async (req, res, next) => {
       return res.status(404).json({ success: false, message: "Address not found" });
     }
 
-    const updates = req.body;
+    const updates = { ...req.body };
+    if (updates.pincode && !updates.pinCode) {
+      updates.pinCode = updates.pincode;
+    }
     if (updates.isDefault) {
       customer.addressBook.forEach((addr) => {
         addr.isDefault = false;

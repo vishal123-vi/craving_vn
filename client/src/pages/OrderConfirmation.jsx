@@ -11,12 +11,14 @@ import {
   IoBagCheckOutline 
 } from "react-icons/io5";
 import toast from "react-hot-toast";
+import ReceiptModal from "../components/payment/ReceiptModal";
 
 const OrderConfirmation = () => {
   const { orderId } = useParams();
   const navigate = useNavigate();
   const [order, setOrder] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [receiptData, setReceiptData] = useState(null);
 
   useEffect(() => {
     const fetchOrder = async () => {
@@ -133,6 +135,38 @@ const OrderConfirmation = () => {
               <span>Track Order Live</span>
               <IoArrowForward size={18} />
             </Link>
+            <button
+              onClick={() =>
+                setReceiptData({
+                  order_id: order._id,
+                  razorpay_order_id: order.paymentDetails?.razorpayOrderId || order._id,
+                  razorpay_payment_id:
+                    order.paymentDetails?.razorpayPaymentId ||
+                    (order.paymentDetails?.paymentMethod === "cod"
+                      ? "Cash on Delivery"
+                      : "Online Payment"),
+                  payment_status: order.paymentDetails?.paymentStatus || "pending",
+                  amount: bill.finalAmount || 0,
+                  items: order.orderItems?.map((item) => ({
+                    quantity: item.quantity,
+                    item: {
+                      itemName:
+                        item.itemDetails?.itemName ||
+                        item.itemId?.itemName ||
+                        "Food Item",
+                      price:
+                        item.itemDetails?.price ||
+                        item.itemId?.price ||
+                        0,
+                    },
+                  })),
+                })
+              }
+              className="inline-flex items-center justify-center gap-2 bg-orange-50 hover:bg-orange-100 dark:bg-orange-950/40 dark:hover:bg-orange-950/60 text-orange-600 dark:text-orange-400 font-bold px-6 py-3.5 rounded-2xl border border-orange-200 dark:border-orange-800 transition cursor-pointer"
+            >
+              <IoReceiptOutline size={18} />
+              <span>Download Invoice / PDF</span>
+            </button>
             <Link
               to="/order-now"
               className="inline-flex items-center justify-center gap-2 bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 text-gray-800 dark:text-white font-bold px-6 py-3.5 rounded-2xl transition"
@@ -237,6 +271,13 @@ const OrderConfirmation = () => {
         </div>
 
       </div>
+
+      {/* Invoice / Receipt Download Modal */}
+      <ReceiptModal
+        isOpen={!!receiptData}
+        onClose={() => setReceiptData(null)}
+        data={receiptData}
+      />
     </div>
   );
 };

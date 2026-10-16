@@ -122,7 +122,16 @@ const CustomerSetting = () => {
       payload.append("phone", formData.phone);
       if (formData.dob) payload.append("dob", formData.dob);
       if (formData.gender) payload.append("gender", formData.gender);
-      payload.append("addresses", JSON.stringify(formData.addresses));
+      
+      const cleanedAddresses = (formData.addresses || [])
+        .filter((a) => a && (a.address?.trim() || a.city?.trim() || a.pincode?.trim()))
+        .map((a) => ({
+          ...a,
+          country: a.country || "India",
+          city: a.city || "Bhopal",
+          state: a.state || "Madhya Pradesh",
+        }));
+      payload.append("addresses", JSON.stringify(cleanedAddresses));
 
       if (profilePic) payload.append("displayPic", profilePic);
 

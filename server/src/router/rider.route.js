@@ -1,5 +1,5 @@
 import express from "express";
-import { getRiderProfile, riderUpdateProfile } from "../controller/rider.controller.js";
+import { getRiderProfile, riderUpdateProfile, toggleRiderAvailability } from "../controller/rider.controller.js";
 import { RiderAuthProtect } from "../middleware/auth.middelware.js";
 
 const router = express.Router();
@@ -11,5 +11,6 @@ router.post(
 );
 
 router.get("/get-profile", RiderAuthProtect, getRiderProfile);
+router.patch("/toggle-availability", RiderAuthProtect, toggleRiderAvailability);
 
 export default router;

@@ -1,5 +1,6 @@
 import crypto from "crypto";
 import Razorpay from "razorpay";
+import QRCode from "qrcode";
 import Order from "../models/order.model.js";
 import Customer from "../models/customer.model.js";
 
@@ -103,31 +104,67 @@ export const CreateRazorpayOrder = async (req, res, next) => {
     order.paymentDetails.paymentMethod = isUpi ? "upi" : "card";
     order.paymentDetails.razorpayOrderId = razorpayOrder.id;
 
-    // Optional standalone QR code via Razorpay Smart Collect API (if merchant account has it enabled)
+    // Dynamic UPI QR code generation
     let qrData = null;
-    if (isUpi && typeof razorpay.qrCode?.create === "function") {
-      try {
-        const qr = await razorpay.qrCode.create({
-          type: "upi_qr",
-          name: "Cravings Food Delivery",
-          usage: "single_use",
-          fixed_amount: true,
-          payment_amount: amountInPaise,
-          description: `Payment for Order #${order._id.toString().substring(0, 8)}`,
-          notes: { appOrderId: String(order._id) },
-        });
-        if (qr && qr.image_url) {
-          qrData = {
-            qrId: qr.id,
-            imageUrl: qr.image_url,
-            status: qr.status,
-          };
-          order.paymentDetails.razorpayQrId = qr.id;
+    if (isUpi) {
+      if (typeof razorpay.qrCode?.create === "function") {
+        try {
+          const qr = await razorpay.qrCode.create({
+            type: "upi_qr",
+            name: "Cravings Food Delivery",
+            usage: "single_use",
+            fixed_amount: true,
+            payment_amount: amountInPaise,
+            description: `Payment for Order #${order._id.toString().substring(0, 8)}`,
+            notes: { appOrderId: String(order._id) },
+          });
+          if (qr && qr.image_url) {
+            qrData = {
+              qrId: qr.id,
+              imageUrl: qr.image_url,
+              status: qr.status,
+            };
+            order.paymentDetails.razorpayQrId = qr.id;
+          }
+        } catch (qrErr) {
+          // If standalone BharatQR add-on is not active on this account, seamlessly generate standard dynamic UPI QR
         }
-      } catch (qrErr) {
-        // Standalone BharatQR add-on is not active by default on standard test accounts.
-        // We gracefully fall back to the official Checkout dynamic UPI QR flow.
-        console.info("Standalone QR Code add-on not active on merchant account. Utilizing Razorpay Checkout dynamic UPI QR flow.");
+      }
+
+      // If standalone Razorpay QR is not active on account, generate official NPCI standard dynamic UPI QR
+      if (!qrData) {
+        const merchantVpa = process.env.MERCHANT_UPI_ID || "cravings.pay@okhdfcbank";
+        const merchantName = "Cravings Food Delivery";
+        const amountInRupees = (amountInPaise / 100).toFixed(2);
+        const shortRef = order._id.toString().substring(0, 8);
+        const upiUri = `upi://pay?pa=${encodeURIComponent(merchantVpa)}&pn=${encodeURIComponent(merchantName)}&am=${amountInRupees}&cu=INR&tn=${encodeURIComponent(`Order #${shortRef}`)}`;
+
+        try {
+          const qrDataUrl = await QRCode.toDataURL(upiUri, {
+            width: 360,
+            margin: 2,
+            color: { dark: "#111827", light: "#FFFFFF" },
+          });
+
+          qrData = {
+            qrId: `upi_${order._id.toString().substring(0, 10)}`,
+            imageUrl: qrDataUrl,
+            upiUri,
+            upiId: merchantVpa,
+            payeeName: merchantName,
+            status: "active",
+          };
+        } catch (genErr) {
+          console.warn("Server QRCode generation fallback error:", genErr.message);
+          qrData = {
+            qrId: `upi_${order._id.toString().substring(0, 10)}`,
+            imageUrl: `https://api.qrserver.com/v1/create-qr-code/?size=300x300&margin=8&data=${encodeURIComponent(upiUri)}`,
+            upiUri,
+            upiId: merchantVpa,
+            payeeName: merchantName,
+            status: "active",
+          };
+        }
       }
     }
 
@@ -138,7 +175,9 @@ export const CreateRazorpayOrder = async (req, res, next) => {
       message: "Razorpay order created",
       data: {
         key: process.env.RAZORPAY_KEY_ID,
+        keyId: process.env.RAZORPAY_KEY_ID,
         razorpayOrderId: razorpayOrder.id,
+        orderId: razorpayOrder.id,
         amount: razorpayOrder.amount,
         currency: razorpayOrder.currency,
         appOrderId: order._id,
@@ -157,13 +196,19 @@ export const VerifyRazorpayPayment = async (req, res, next) => {
   try {
     const { orderId, razorpay_order_id, razorpay_payment_id, razorpay_signature } = req.body;
 
-    if (!orderId || !razorpay_order_id || !razorpay_payment_id || !razorpay_signature) {
-      const err = new Error("All payment verification fields are required (orderId, razorpay_order_id, razorpay_payment_id, razorpay_signature)");
+    if ((!orderId && !razorpay_order_id) || !razorpay_payment_id || !razorpay_signature) {
+      const err = new Error("Payment verification fields are required (orderId or razorpay_order_id, razorpay_payment_id, razorpay_signature)");
       err.statusCode = 400;
       return next(err);
     }
 
-    const order = await getCustomerOrder(req.user._id, orderId);
+    let order = null;
+    if (orderId) {
+      order = await getCustomerOrder(req.user._id, orderId);
+    }
+    if (!order && razorpay_order_id) {
+      order = await Order.findOne({ "paymentDetails.razorpayOrderId": razorpay_order_id });
+    }
     if (!order) {
       const err = new Error("Order not found");
       err.statusCode = 404;
@@ -259,6 +304,12 @@ export const CancelRazorpayPayment = async (req, res, next) => {
 // Allows safe, realistic online payment simulation during development/testing
 export const VerifySandboxPayment = async (req, res, next) => {
   try {
+    if (process.env.NODE_ENV === "production") {
+      const err = new Error("Sandbox payment verification is disabled in production environment");
+      err.statusCode = 403;
+      return next(err);
+    }
+
     const { orderId, simulateFailure = false, paymentMethod = "upi" } = req.body;
     if (!orderId) {
       const err = new Error("orderId is required");
@@ -393,18 +444,32 @@ export const HandleRazorpayWebhook = async (req, res) => {
     const webhookSecret = process.env.RAZORPAY_WEBHOOK_SECRET;
     const signature = req.headers["x-razorpay-signature"];
 
-    // If webhook secret is configured, strictly verify the HMAC signature
-    if (webhookSecret && signature) {
-      const rawPayload = req.rawBody ? req.rawBody.toString("utf8") : JSON.stringify(req.body);
-      const expectedSignature = crypto
-        .createHmac("sha256", webhookSecret)
-        .update(rawPayload)
-        .digest("hex");
-
-      if (expectedSignature !== signature) {
-        console.warn("Razorpay Webhook: Invalid signature received.");
-        return res.status(400).json({ success: false, message: "Invalid webhook signature" });
+    if (!webhookSecret) {
+      if (process.env.NODE_ENV === "production") {
+        return res.status(500).json({ success: false, message: "Razorpay webhook secret is not configured" });
       }
+      return res.status(400).json({ success: false, message: "Webhook secret is required to verify webhook" });
+    }
+
+    if (!signature) {
+      return res.status(400).json({ success: false, message: "Webhook signature header missing" });
+    }
+
+    const rawPayload = req.rawBody ? req.rawBody : (typeof req.body === "string" ? req.body : JSON.stringify(req.body));
+    const expectedSignature = crypto
+      .createHmac("sha256", webhookSecret)
+      .update(rawPayload)
+      .digest("hex");
+
+    const expectedBuffer = Buffer.from(expectedSignature, "utf8");
+    const signatureBuffer = Buffer.from(signature, "utf8");
+
+    if (
+      expectedBuffer.length !== signatureBuffer.length ||
+      !crypto.timingSafeEqual(expectedBuffer, signatureBuffer)
+    ) {
+      console.warn("Razorpay Webhook: Invalid signature received.");
+      return res.status(400).json({ success: false, message: "Invalid webhook signature" });
     }
 
     const event = req.body?.event;

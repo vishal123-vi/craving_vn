@@ -242,6 +242,8 @@ const ProfilePage = () => {
       await api.get("/auth/logout");
     } catch (ignore) {}
     sessionStorage.removeItem("cravingUser");
+    sessionStorage.removeItem("token");
+    localStorage.removeItem("token");
     setUser(null);
     setIsLogin(false);
     setRole(null);

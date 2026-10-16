@@ -1,3 +1,6 @@
+import dotenv from "dotenv";
+dotenv.config();
+
 import cloudinary from "./src/config/cloudinary.config.js";
 import express from "express";
 import helmet from "helmet";
@@ -32,10 +35,9 @@ app.use(
 // Response compression for high-throughput responses
 app.use(compression());
 
-// Production CORS configuration
+// CORS configuration
 const allowedOrigins = [
   "http://localhost:5173",
-  "https://raj-cravings.netlify.app",
 ];
 if (process.env.FRONTEND_URL) {
   allowedOrigins.push(process.env.FRONTEND_URL.trim());

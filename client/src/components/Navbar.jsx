@@ -74,6 +74,8 @@ const Navbar = () => {
       toast.success(res.data.message);
 
       sessionStorage.removeItem("cravingUser");
+      sessionStorage.removeItem("token");
+      localStorage.removeItem("token");
       setUser(null);
       setIsLogin(false);
       setRole(null);
@@ -147,25 +149,12 @@ const Navbar = () => {
       },
     };
 
+    // Allow Razorpay to present all supported instruments (UPI, Cards, NetBanking, Wallets)
+    // without restricting or hiding default payment methods
     if (isUpi) {
-      options.config = {
-        display: {
-          blocks: {
-            upi: {
-              name: "Pay using UPI / QR Code",
-              instruments: [
-                {
-                  method: "upi",
-                  flows: ["qr", "intent", "collect"],
-                },
-              ],
-            },
-          },
-          sequence: ["block.upi"],
-          preferences: {
-            show_default_blocks: false,
-          },
-        },
+      options.prefill = {
+        ...options.prefill,
+        method: "upi",
       };
     }
 
@@ -268,18 +257,9 @@ const Navbar = () => {
         setCurrentPaymentData(paymentData);
         setIsGatewayConfigured(true);
 
-        if (paymentData?.qrData?.imageUrl) {
-          // Standalone BharatQR returned
-          setUpiQrData(paymentData.qrData);
-          setUpiOrderData(createOrderRes.data.data);
-          setIsCartOpen(false);
-        } else {
-          // Standard Razorpay Checkout UPI Dynamic QR flow
-          setUpiQrData(null);
-          setUpiOrderData(createOrderRes.data.data);
-          setIsCartOpen(false);
-          launchRazorpayCheckout(appOrderId, paymentData, true);
-        }
+        setUpiQrData(paymentData?.qrData || null);
+        setUpiOrderData(createOrderRes.data.data);
+        setIsCartOpen(false);
         return;
       }
 

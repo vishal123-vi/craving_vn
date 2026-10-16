@@ -589,6 +589,39 @@ const OrderTracking = () => {
               <span className="font-bold text-base text-gray-900 dark:text-white">Grand Total</span>
               <span className="text-2xl font-black text-orange-600 dark:text-orange-400">₹{bill.finalAmount || 0}</span>
             </div>
+
+            <button
+              onClick={() =>
+                setReceiptData({
+                  order_id: order._id,
+                  razorpay_order_id: order.paymentDetails?.razorpayOrderId || order._id,
+                  razorpay_payment_id:
+                    order.paymentDetails?.razorpayPaymentId ||
+                    (order.paymentDetails?.paymentMethod === "cod"
+                      ? "Cash on Delivery"
+                      : "Online Payment"),
+                  payment_status: order.paymentDetails?.paymentStatus || "pending",
+                  amount: bill.finalAmount || 0,
+                  items: order.orderItems?.map((item) => ({
+                    quantity: item.quantity,
+                    item: {
+                      itemName:
+                        item.itemDetails?.itemName ||
+                        item.itemId?.itemName ||
+                        "Food Item",
+                      price:
+                        item.itemDetails?.price ||
+                        item.itemId?.price ||
+                        0,
+                    },
+                  })),
+                })
+              }
+              className="mt-4 w-full py-2.5 bg-orange-50 hover:bg-orange-100 dark:bg-orange-950/40 dark:hover:bg-orange-950/60 text-orange-600 dark:text-orange-400 rounded-xl font-bold text-xs border border-orange-200 dark:border-orange-800 transition flex items-center justify-center gap-2 cursor-pointer active:scale-95"
+            >
+              <IoReceiptOutline size={16} />
+              <span>Download Invoice / PDF Receipt</span>
+            </button>
           </div>
         </div>
 

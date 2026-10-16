@@ -1,222 +1,334 @@
 import React, { useState, useEffect } from "react";
-import { FaShoppingCart, FaMoneyBillWave, FaRoute, FaStar } from "react-icons/fa";
-import { MdTimeline } from "react-icons/md";
-import { BiTrendingUp } from "react-icons/bi";
+import { 
+  FiBox, 
+  FiTruck, 
+  FiCheckCircle, 
+  FiArrowRight, 
+  FiPower, 
+  FiMapPin 
+} from "react-icons/fi";
+import { IoWalletOutline } from "react-icons/io5";
+import { MdDeliveryDining, MdOutlineLocalShipping } from "react-icons/md";
+import { useAuth } from "../../context/AuthContext";
 import api from "../../config/ApiConfig";
 import toast from "react-hot-toast";
 
-const RiderOverview = () => {
-  const [orders, setOrders] = useState([]);
-  const [loading, setLoading] = useState(true);
+const RiderOverview = ({ onNavigateTab, onToggleStatus, isAvailable, stats, activeOrder, availableOrders = [] }) => {
+  const { user } = useAuth();
+  const [toggling, setToggling] = useState(false);
 
-  useEffect(() => {
-    fetchOrders();
-    const interval = setInterval(() => {
-      fetchOrders(false);
-    }, 10000); // Poll every 10 seconds
+  const firstName = user?.fullName?.split(" ")[0] || "Vishal";
 
-    return () => clearInterval(interval);
-  }, []);
-
-  const fetchOrders = async (showLoading = true) => {
+  const handleToggle = async () => {
     try {
-      if (showLoading) setLoading(true);
-      const response = await api.get("/order/rider-orders");
-      if (response.data.success) {
-        setOrders(response.data.data);
-      }
-    } catch (error) {
-      console.error("Order fetch error:", error.response?.data || error);
+      setToggling(true);
+      await onToggleStatus();
     } finally {
-      setLoading(false);
+      setToggling(false);
     }
   };
 
-  // Calculate stats from real orders
-  const totalEarnings = orders.reduce((total, order) => total + (order.billDetails?.finalAmount || 0), 0);
-  const recentOrders = orders.slice(0, 3); // Get top 3 most recent
+  const availableCount = availableOrders.length;
+  const activeCount = activeOrder ? 1 : 0;
+  const completedCount = stats?.todayDeliveries ?? 3;
+  const todayEarnings = stats?.todayEarnings ?? 285;
+
   return (
-    <div className="overflow-y-auto h-full px-2 pb-8">
-      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-end gap-4 mb-6 sm:mb-8">
-        <div>
-          <h2 className="text-2xl sm:text-3xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-orange-600 to-orange-400 dark:from-orange-400 dark:to-orange-300 drop-shadow-sm">
-            Rider Overview
-          </h2>
-          <p className="text-gray-500 dark:text-gray-400 text-xs sm:text-sm font-medium mt-1">
-            Welcome back! Here's your performance at a glance.
-          </p>
-        </div>
-        <div className="inline-flex w-fit items-center gap-2 bg-white/80 dark:bg-black/40 px-3 sm:px-4 py-1.5 sm:py-2 rounded-full shadow-inner border border-white/20">
-          <span className="relative flex h-2.5 w-2.5 sm:h-3 sm:w-3">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-500 opacity-75"></span>
-            <span className="relative inline-flex rounded-full h-2.5 w-2.5 sm:h-3 sm:w-3 bg-green-600"></span>
-          </span>
-          <span className="text-xs sm:text-sm font-semibold text-green-600 dark:text-green-500">Online & Accepting Orders</span>
-        </div>
-      </div>
+    <div className="space-y-6 max-w-7xl mx-auto">
+      {/* Main Grid: Left 2 Columns (Content) + Right 1 Column (Rail) */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
+        
+        {/* Left Side: Hero Banner + 4 Bento Cards + Notification Banner */}
+        <div className="lg:col-span-2 space-y-6">
+          
+          {/* 1. Hero Greeting Banner */}
+          <div className="relative overflow-hidden bg-white rounded-3xl p-6 sm:p-8 shadow-xs border border-slate-100 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6">
+            <div className="z-10 max-w-md">
+              <div className="flex items-center gap-3 mb-2">
+                <h1 className="text-2xl sm:text-3xl font-black text-slate-800 tracking-tight">
+                  Hello, {firstName} 👋
+                </h1>
+                <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold ${
+                  isAvailable 
+                    ? "bg-emerald-50 text-emerald-600 border border-emerald-200" 
+                    : "bg-slate-100 text-slate-600 border border-slate-200"
+                }`}>
+                  <span className={`w-2 h-2 rounded-full ${isAvailable ? "bg-emerald-500 animate-pulse" : "bg-slate-400"}`} />
+                  {isAvailable ? "Online" : "Offline"}
+                </span>
+              </div>
+              <p className="text-slate-500 text-sm sm:text-base font-medium">
+                Ready to deliver happiness?
+              </p>
+            </div>
 
-      {/* Stats Bento Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-        {/* Card 1 */}
-        <div className="group relative bg-gradient-to-br from-white to-gray-50 dark:from-gray-800 dark:to-gray-900 p-6 rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] dark:shadow-[0_8px_30px_rgb(0,0,0,0.2)] border border-gray-100 dark:border-gray-700/50 hover:shadow-lg transition-all duration-300 hover:-translate-y-1 overflow-hidden">
-          <div className="absolute -right-6 -top-6 w-24 h-24 bg-gradient-to-br from-blue-400/20 to-purple-500/20 rounded-full blur-2xl group-hover:scale-150 transition-transform duration-700"></div>
-          <div className="flex justify-between items-start relative z-10">
-            <div>
-              <p className="text-(--color-neutral) text-sm font-semibold tracking-wide uppercase mb-1">Total Orders</p>
-              <p className="text-4xl font-black text-gray-800 dark:text-white">{orders.length}</p>
-            </div>
-            <div className="p-3 bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-2xl shadow-inner">
-              <FaShoppingCart size={24} />
-            </div>
-          </div>
-          <div className="mt-4 flex items-center text-sm font-medium text-green-500">
-            <BiTrendingUp className="mr-1" size={18} />
-            <span>+12% this week</span>
-          </div>
-        </div>
+            {/* Delivery Rider on Scooter Illustration */}
+            <div className="sm:shrink-0 relative w-full sm:w-60 h-28 flex items-center justify-end">
+              <svg 
+                viewBox="0 0 240 110" 
+                className="w-full h-full max-w-[240px] drop-shadow-sm select-none"
+                fill="none" 
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                {/* Background City Silhouette */}
+                <path d="M10 85 L25 85 L25 45 L50 45 L50 85 L70 85 L70 55 L95 55 L95 85 L120 85 L120 40 L145 40 L145 85 L170 85 L170 60 L195 60 L195 85 L230 85" stroke="#E2E8F0" strokeWidth="1.5" strokeDasharray="3 3" opacity="0.7"/>
+                
+                {/* Road Line */}
+                <line x1="0" y1="92" x2="240" y2="92" stroke="#CBD5E1" strokeWidth="2.5"/>
+                <line x1="20" y1="96" x2="50" y2="96" stroke="#94A3B8" strokeWidth="2" strokeDasharray="6 6"/>
+                <line x1="80" y1="96" x2="130" y2="96" stroke="#94A3B8" strokeWidth="2" strokeDasharray="6 6"/>
+                <line x1="160" y1="96" x2="210" y2="96" stroke="#94A3B8" strokeWidth="2" strokeDasharray="6 6"/>
 
-        {/* Card 2 */}
-        <div className="group relative bg-gradient-to-br from-white to-gray-50 dark:from-gray-800 dark:to-gray-900 p-6 rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] dark:shadow-[0_8px_30px_rgb(0,0,0,0.2)] border border-gray-100 dark:border-gray-700/50 hover:shadow-lg transition-all duration-300 hover:-translate-y-1 overflow-hidden">
-          <div className="absolute -right-6 -top-6 w-24 h-24 bg-gradient-to-br from-green-400/20 to-emerald-500/20 rounded-full blur-2xl group-hover:scale-150 transition-transform duration-700"></div>
-          <div className="flex justify-between items-start relative z-10">
-            <div>
-              <p className="text-(--color-neutral) text-sm font-semibold tracking-wide uppercase mb-1">Total Earnings</p>
-              <p className="text-4xl font-black text-gray-800 dark:text-white">₹{totalEarnings}</p>
-            </div>
-            <div className="p-3 bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400 rounded-2xl shadow-inner">
-              <FaMoneyBillWave size={24} />
-            </div>
-          </div>
-          <div className="mt-4 flex items-center text-sm font-medium text-green-500">
-            <BiTrendingUp className="mr-1" size={18} />
-            <span>+₹240 this week</span>
-          </div>
-        </div>
+                {/* Scooter Wheels */}
+                <circle cx="110" cy="85" r="14" fill="#334155" stroke="#0F172A" strokeWidth="2"/>
+                <circle cx="110" cy="85" r="7" fill="#E2E8F0"/>
+                <circle cx="178" cy="85" r="14" fill="#334155" stroke="#0F172A" strokeWidth="2"/>
+                <circle cx="178" cy="85" r="7" fill="#E2E8F0"/>
 
-        {/* Card 3 */}
-        <div className="group relative bg-gradient-to-br from-white to-gray-50 dark:from-gray-800 dark:to-gray-900 p-6 rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] dark:shadow-[0_8px_30px_rgb(0,0,0,0.2)] border border-gray-100 dark:border-gray-700/50 hover:shadow-lg transition-all duration-300 hover:-translate-y-1 overflow-hidden">
-          <div className="absolute -right-6 -top-6 w-24 h-24 bg-gradient-to-br from-orange-400/20 to-red-500/20 rounded-full blur-2xl group-hover:scale-150 transition-transform duration-700"></div>
-          <div className="flex justify-between items-start relative z-10">
-            <div>
-              <p className="text-(--color-neutral) text-sm font-semibold tracking-wide uppercase mb-1">Total Distance</p>
-              <p className="text-4xl font-black text-gray-800 dark:text-white">452 <span className="text-xl font-bold text-gray-500">km</span></p>
-            </div>
-            <div className="p-3 bg-orange-100 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400 rounded-2xl shadow-inner">
-              <FaRoute size={24} />
-            </div>
-          </div>
-          <div className="mt-4 flex items-center text-sm font-medium text-gray-500 dark:text-gray-400">
-            <MdTimeline className="mr-1" size={18} />
-            <span>Avg 3.6 km/order</span>
-          </div>
-        </div>
+                {/* Scooter Body (Red) */}
+                <path d="M110 85 L135 85 L155 75 L175 70 L178 85" stroke="#DC2626" strokeWidth="8" strokeLinecap="round" strokeLinejoin="round"/>
+                <path d="M125 78 L142 55 L165 55" stroke="#DC2626" strokeWidth="4" strokeLinecap="round"/>
+                <path d="M165 55 L160 42 L150 42" stroke="#334155" strokeWidth="3" strokeLinecap="round"/>
 
-        {/* Card 4 */}
-        <div className="group relative bg-gradient-to-br from-white to-gray-50 dark:from-gray-800 dark:to-gray-900 p-6 rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] dark:shadow-[0_8px_30px_rgb(0,0,0,0.2)] border border-gray-100 dark:border-gray-700/50 hover:shadow-lg transition-all duration-300 hover:-translate-y-1 overflow-hidden lg:col-span-1 md:col-span-2">
-          <div className="absolute -right-6 -top-6 w-24 h-24 bg-gradient-to-br from-yellow-400/20 to-amber-500/20 rounded-full blur-2xl group-hover:scale-150 transition-transform duration-700"></div>
-          <div className="flex justify-between items-start relative z-10">
-            <div>
-              <p className="text-(--color-neutral) text-sm font-semibold tracking-wide uppercase mb-1">Rider Rating</p>
-              <div className="flex items-center gap-2">
-                <p className="text-4xl font-black text-gray-800 dark:text-white">4.9</p>
-                <div className="flex text-yellow-400 drop-shadow-md">
-                  <FaStar size={20} />
+                {/* Rider Character */}
+                {/* Legs */}
+                <path d="M136 58 L148 70 L146 80" stroke="#1E293B" strokeWidth="5" strokeLinecap="round" strokeLinejoin="round"/>
+                {/* Body (Red Jacket) */}
+                <path d="M132 45 L142 60" stroke="#DC2626" strokeWidth="10" strokeLinecap="round"/>
+                {/* Arms holding handle */}
+                <path d="M135 48 L152 48 L158 44" stroke="#DC2626" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round"/>
+                {/* Head with Blue/Red Helmet */}
+                <circle cx="138" cy="32" r="10" fill="#2563EB"/>
+                <path d="M138 24 A 10 10 0 0 1 148 34 L 140 34 Z" fill="#DC2626"/>
+                {/* Helmet visor */}
+                <path d="M143 32 L147 34" stroke="#FFFFFF" strokeWidth="2" strokeLinecap="round"/>
+
+                {/* Delivery Box (Backpack on rear rack) */}
+                <rect x="98" y="50" width="22" height="24" rx="4" fill="#DC2626" stroke="#991B1B" strokeWidth="1.5"/>
+                <rect x="103" y="58" width="12" height="8" rx="2" fill="#FFFFFF" opacity="0.9"/>
+                {/* Fork icon miniature on box */}
+                <line x1="109" y1="60" x2="109" y2="64" stroke="#DC2626" strokeWidth="1.5"/>
+
+                {/* Speed Lines */}
+                <path d="M80 62 L92 62" stroke="#94A3B8" strokeWidth="2" strokeLinecap="round"/>
+                <path d="M75 70 L90 70" stroke="#94A3B8" strokeWidth="2" strokeLinecap="round"/>
+                <path d="M83 78 L93 78" stroke="#94A3B8" strokeWidth="2" strokeLinecap="round"/>
+
+                {/* GPS Location Pin on route */}
+                <circle cx="60" cy="40" r="12" fill="#EF4444" opacity="0.15"/>
+                <path d="M60 30 C56 30 53 33 53 37 C53 43 60 50 60 50 C60 50 67 43 67 37 C67 33 64 30 60 30 Z" fill="#EF4444"/>
+                <circle cx="60" cy="36" r="3" fill="#FFFFFF"/>
+              </svg>
+            </div>
+          </div>
+
+          {/* 2. Bento KPI Cards (4 Items) */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+            
+            {/* Card 1: Available Orders */}
+            <div 
+              onClick={() => onNavigateTab("available")}
+              className="bg-[#EFF6FF] border border-[#DBEAFE] rounded-3xl p-5 hover:shadow-md transition-all duration-200 cursor-pointer flex flex-col justify-between"
+            >
+              <div>
+                <div className="w-11 h-11 rounded-2xl bg-blue-500/15 flex items-center justify-center text-blue-600 mb-3">
+                  <FiBox className="text-2xl" />
                 </div>
+                <p className="text-xs font-semibold text-slate-600">Available Orders</p>
+                <h3 className="text-2xl sm:text-3xl font-black text-slate-900 mt-1">
+                  {availableCount}
+                </h3>
+              </div>
+              <div className="mt-4 flex items-center gap-1.5 text-xs font-bold text-blue-600 hover:text-blue-700">
+                <span>View Orders</span>
+                <FiArrowRight />
               </div>
             </div>
-            <div className="p-3 bg-yellow-100 dark:bg-yellow-900/30 text-yellow-600 dark:text-yellow-400 rounded-2xl shadow-inner">
-              <FaStar size={24} />
-            </div>
-          </div>
-          <div className="mt-4 flex items-center text-sm font-medium text-gray-500 dark:text-gray-400">
-            <span>Based on 98 reviews</span>
-          </div>
-        </div>
-      </div>
 
-      {/* Recent Activity & Quick Actions */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Recent Orders List */}
-        <div className="lg:col-span-2 bg-gradient-to-br from-white/95 to-white/70 dark:from-gray-900/95 dark:to-gray-800/80 backdrop-blur-xl p-4 sm:p-6 rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] dark:shadow-[0_8px_30px_rgb(0,0,0,0.2)] border border-white/40 dark:border-gray-700/50 relative overflow-hidden">
-          <div className="absolute inset-0 bg-gradient-to-br from-orange-500/5 to-transparent pointer-events-none"></div>
-          <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-orange-500 to-orange-400 opacity-50"></div>
-          <div className="flex justify-between items-center mb-4 sm:mb-6">
-            <h3 className="text-xl font-bold text-gray-800 dark:text-white">Recent Orders</h3>
-            <button className="text-sm font-semibold text-(--color-primary) hover:text-(--color-primary-focus) transition-colors hover:underline">
-              View All
+            {/* Card 2: Active Deliveries */}
+            <div 
+              onClick={() => onNavigateTab("active")}
+              className="bg-[#F0FDF4] border border-[#DCFCE7] rounded-3xl p-5 hover:shadow-md transition-all duration-200 cursor-pointer flex flex-col justify-between"
+            >
+              <div>
+                <div className="w-11 h-11 rounded-2xl bg-emerald-500/15 flex items-center justify-center text-emerald-600 mb-3">
+                  <MdOutlineLocalShipping className="text-2xl" />
+                </div>
+                <p className="text-xs font-semibold text-slate-600">Active Deliveries</p>
+                <h3 className="text-2xl sm:text-3xl font-black text-slate-900 mt-1">
+                  {activeCount}
+                </h3>
+              </div>
+              <div className="mt-4 flex items-center gap-1.5 text-xs font-bold text-emerald-600 hover:text-emerald-700">
+                <span>Track Now</span>
+                <FiArrowRight />
+              </div>
+            </div>
+
+            {/* Card 3: Completed Today */}
+            <div 
+              onClick={() => onNavigateTab("history")}
+              className="bg-[#FAF5FF] border border-[#F3E8FF] rounded-3xl p-5 hover:shadow-md transition-all duration-200 cursor-pointer flex flex-col justify-between"
+            >
+              <div>
+                <div className="w-11 h-11 rounded-2xl bg-purple-500/15 flex items-center justify-center text-purple-600 mb-3">
+                  <FiCheckCircle className="text-2xl" />
+                </div>
+                <p className="text-xs font-semibold text-slate-600">Completed Today</p>
+                <h3 className="text-2xl sm:text-3xl font-black text-slate-900 mt-1">
+                  {completedCount}
+                </h3>
+              </div>
+              <div className="mt-4 flex items-center gap-1.5 text-xs font-bold text-purple-600 hover:text-purple-700">
+                <span>View History</span>
+                <FiArrowRight />
+              </div>
+            </div>
+
+            {/* Card 4: Today's Earnings */}
+            <div 
+              onClick={() => onNavigateTab("earnings")}
+              className="bg-[#FFFBEB] border border-[#FEF3C7] rounded-3xl p-5 hover:shadow-md transition-all duration-200 cursor-pointer flex flex-col justify-between"
+            >
+              <div>
+                <div className="w-11 h-11 rounded-2xl bg-amber-500/15 flex items-center justify-center text-amber-600 mb-3">
+                  <IoWalletOutline className="text-2xl" />
+                </div>
+                <p className="text-xs font-semibold text-slate-600">Today's Earnings</p>
+                <h3 className="text-2xl sm:text-3xl font-black text-slate-900 mt-1">
+                  ₹ {todayEarnings}
+                </h3>
+              </div>
+              <div className="mt-4 flex items-center gap-1.5 text-xs font-bold text-amber-600 hover:text-amber-700">
+                <span>View Details</span>
+                <FiArrowRight />
+              </div>
+            </div>
+
+          </div>
+
+          {/* 3. "New Orders Available!" Notification Banner */}
+          <div className="bg-[#F0FDF4] border border-[#DCFCE7] rounded-3xl p-5 sm:p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 rounded-2xl bg-emerald-100 flex items-center justify-center text-emerald-600 text-2xl shrink-0">
+                🗺️
+              </div>
+              <div>
+                <h4 className="text-base sm:text-lg font-bold text-slate-900">
+                  New Orders Available!
+                </h4>
+                <p className="text-xs sm:text-sm text-slate-600 mt-0.5">
+                  Check the available orders and claim the one near you.
+                </p>
+              </div>
+            </div>
+
+            <button
+              onClick={() => onNavigateTab("available")}
+              className="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-[#10B981] hover:bg-[#059669] text-white font-bold text-sm flex items-center justify-center gap-2 shadow-sm transition-colors shrink-0 cursor-pointer"
+            >
+              <span>View Available Orders</span>
+              <FiArrowRight />
             </button>
           </div>
-          
-          <div className="flex flex-col gap-3">
-            {loading && orders.length === 0 ? (
-               <div className="flex justify-center items-center h-24">
-                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-500"></div>
-               </div>
-            ) : recentOrders.length > 0 ? (
-              recentOrders.map((order, index) => (
-                <div key={order._id} className="group flex flex-col sm:flex-row items-start sm:items-center justify-between p-4 rounded-2xl bg-white/50 dark:bg-gray-800/50 hover:bg-white/80 dark:hover:bg-gray-700/50 transition-all duration-300 border border-transparent hover:border-orange-200 dark:hover:border-orange-500/30 shadow-sm hover:shadow-md cursor-pointer relative z-10 gap-3 sm:gap-0">
-                  <div className="flex items-center gap-3 sm:gap-4 w-full sm:w-auto min-w-0">
-                    <div className={`w-10 h-10 sm:w-12 sm:h-12 shrink-0 rounded-xl flex items-center justify-center shadow-inner font-bold text-base sm:text-lg
-                      ${index === 0 ? 'bg-green-100 text-green-600 dark:bg-green-900/40 dark:text-green-400' : 
-                        index === 1 ? 'bg-blue-100 text-blue-600 dark:bg-blue-900/40 dark:text-blue-400' : 
-                        'bg-orange-100 text-orange-600 dark:bg-orange-900/40 dark:text-orange-400'}
-                    `}>
-                      #{index + 1}
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <h4 className="font-bold text-sm sm:text-base text-gray-800 dark:text-gray-100 truncate">Order #{order._id.substring(0, 8).toUpperCase()}</h4>
-                      <p className="text-[10px] sm:text-xs text-gray-500 font-medium truncate">{order.restaurantId?.restaurantName || "Unknown"}</p>
-                    </div>
-                  </div>
-                  <div className="text-left sm:text-right w-full sm:w-auto shrink-0 pl-[52px] sm:pl-2 flex sm:block items-center justify-between sm:justify-start">
-                    <p className="font-bold text-sm sm:text-base text-gray-800 dark:text-gray-100 order-2 sm:order-1">₹{order.billDetails?.finalAmount || 0}</p>
-                    <p className={`text-[10px] sm:text-xs font-semibold px-2 py-1 rounded-full sm:mt-1 inline-block capitalize order-1 sm:order-2
-                      ${order.orderStatus === "delivered" ? 'bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-300' : 
-                        order.orderStatus === "pending" || order.orderStatus === "preparing" ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/50 dark:text-yellow-300' :
-                        'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400'}
-                    `}>
-                      {order.orderStatus}
-                    </p>
-                  </div>
-                </div>
-              ))
-            ) : (
-              <div className="text-center py-6 text-gray-500 dark:text-gray-400 font-semibold text-sm">
-                No recent orders found.
-              </div>
-            )}
-          </div>
+
         </div>
 
-        {/* Notice Board */}
-        <div className="bg-gradient-to-br from-orange-500 to-orange-600 p-6 rounded-3xl shadow-[0_8px_30px_rgba(249,115,22,0.3)] dark:shadow-[0_8px_30px_rgba(249,115,22,0.15)] text-white relative overflow-hidden group">
-          <div className="absolute top-0 right-0 w-32 h-32 bg-white/20 rounded-full blur-2xl -mr-10 -mt-10 group-hover:scale-125 transition-transform duration-1000"></div>
-          <div className="absolute bottom-0 left-0 w-24 h-24 bg-black/20 rounded-full blur-xl -ml-8 -mb-8 group-hover:scale-150 transition-transform duration-1000"></div>
+        {/* Right Rail: Quick Actions & Rider Status */}
+        <div className="space-y-6">
           
-          <h3 className="text-xl font-bold mb-4 relative z-10 flex items-center gap-2">
-            <span className="text-2xl">📢</span> Announcements
-          </h3>
-          
-          <div className="space-y-4 relative z-10">
-            <div className="bg-black/20 backdrop-blur-sm p-4 rounded-2xl border border-white/20 hover:bg-black/30 transition-colors cursor-pointer">
-              <h4 className="font-bold text-sm mb-1 text-yellow-200">Weekend Bonus!</h4>
-              <p className="text-xs text-white/90 leading-relaxed">
-                Complete 20 deliveries this weekend and earn an extra ₹5000 bonus. Stay safe on the roads!
-              </p>
-            </div>
+          {/* Quick Actions Panel */}
+          <div className="bg-white rounded-3xl p-6 shadow-xs border border-slate-100">
+            <h3 className="text-base font-bold text-slate-900 mb-4">
+              Quick Actions
+            </h3>
             
-            <div className="bg-black/20 backdrop-blur-sm p-4 rounded-2xl border border-white/20 hover:bg-black/30 transition-colors cursor-pointer">
-              <h4 className="font-bold text-sm mb-1 text-blue-200">App Update</h4>
-              <p className="text-xs text-white/90 leading-relaxed">
-                New navigation features have been added to the rider app. Please update to version 2.4.
-              </p>
+            <div className="space-y-3">
+              {/* Action 1 */}
+              <button
+                onClick={() => onNavigateTab("available")}
+                className="w-full flex items-center justify-between p-3.5 rounded-2xl border border-slate-100 hover:border-blue-200 hover:bg-blue-50/40 transition-all text-left cursor-pointer group"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-blue-500 text-white flex items-center justify-center shrink-0 shadow-sm shadow-blue-500/20">
+                    <FiBox className="text-xl" />
+                  </div>
+                  <span className="font-semibold text-sm text-slate-800 group-hover:text-blue-600">
+                    View Available Orders
+                  </span>
+                </div>
+                <FiArrowRight className="text-slate-400 group-hover:text-blue-600 group-hover:translate-x-1 transition-all" />
+              </button>
+
+              {/* Action 2 */}
+              <button
+                onClick={() => onNavigateTab("active")}
+                className="w-full flex items-center justify-between p-3.5 rounded-2xl border border-slate-100 hover:border-emerald-200 hover:bg-emerald-50/40 transition-all text-left cursor-pointer group"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-emerald-500 text-white flex items-center justify-center shrink-0 shadow-sm shadow-emerald-500/20">
+                    <MdOutlineLocalShipping className="text-xl" />
+                  </div>
+                  <span className="font-semibold text-sm text-slate-800 group-hover:text-emerald-600">
+                    My Deliveries
+                  </span>
+                </div>
+                <FiArrowRight className="text-slate-400 group-hover:text-emerald-600 group-hover:translate-x-1 transition-all" />
+              </button>
+
+              {/* Action 3 */}
+              <button
+                onClick={() => onNavigateTab("earnings")}
+                className="w-full flex items-center justify-between p-3.5 rounded-2xl border border-slate-100 hover:border-amber-200 hover:bg-amber-50/40 transition-all text-left cursor-pointer group"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-amber-500 text-white flex items-center justify-center shrink-0 shadow-sm shadow-amber-500/20">
+                    <IoWalletOutline className="text-xl" />
+                  </div>
+                  <span className="font-semibold text-sm text-slate-800 group-hover:text-amber-600">
+                    Earnings
+                  </span>
+                </div>
+                <FiArrowRight className="text-slate-400 group-hover:text-amber-600 group-hover:translate-x-1 transition-all" />
+              </button>
             </div>
           </div>
-          
-          <button className="mt-6 w-full py-3 bg-white text-orange-600 font-bold rounded-xl shadow-[0_4px_14px_0_rgba(0,0,0,0.1)] hover:shadow-[0_6px_20px_rgba(0,0,0,0.15)] hover:-translate-y-0.5 transition-all duration-300 relative z-10">
-            View All Updates
-          </button>
+
+          {/* Rider Status Card */}
+          <div className="bg-white rounded-3xl p-6 shadow-xs border border-slate-100">
+            <h3 className="text-base font-bold text-slate-900 mb-2">
+              Rider Status
+            </h3>
+
+            <div className="flex items-center gap-2 mb-1">
+              <span className={`w-2.5 h-2.5 rounded-full ${isAvailable ? "bg-emerald-500 animate-pulse" : "bg-slate-400"}`} />
+              <span className="font-bold text-sm text-slate-800">
+                {isAvailable ? "Online" : "Offline"}
+              </span>
+            </div>
+
+            <p className="text-xs text-slate-500 mb-5">
+              {isAvailable 
+                ? "You are available for new deliveries." 
+                : "You are currently offline. Go online to receive order alerts."}
+            </p>
+
+            <button
+              onClick={handleToggle}
+              disabled={toggling}
+              className={`w-full py-2.5 px-4 rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition-all cursor-pointer border ${
+                isAvailable
+                  ? "bg-white text-red-600 border-red-200 hover:bg-red-50 hover:border-red-300 shadow-xs"
+                  : "bg-emerald-600 text-white border-emerald-600 hover:bg-emerald-700 shadow-sm shadow-emerald-600/20"
+              }`}
+            >
+              <FiPower className="text-base" />
+              <span>{isAvailable ? "Go Offline" : "Go Online"}</span>
+            </button>
+          </div>
+
         </div>
+
       </div>
     </div>
   );

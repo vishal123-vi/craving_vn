@@ -6,16 +6,22 @@ export const EditUserProfile = async (req, res, next) => {
     const { email, fullName, phone, dob, gender, addresses } = req.body;
     const newPhoto = req.file;
 
-
     if (!email || !fullName || !phone) {
       const error = new Error("All fields Required");
       error.statusCode = 400;
       return next(error);
     }
 
-    const existingUser = await User.findOne({ email });
+    const userId = req.user?._id;
+    if (!userId) {
+      const error = new Error("Unauthorized");
+      error.statusCode = 401;
+      return next(error);
+    }
+
+    const existingUser = await User.findById(userId);
     if (!existingUser) {
-      const error = new Error("Email not registred");
+      const error = new Error("User not found");
       error.statusCode = 404;
       return next(error);
     }
@@ -49,17 +55,42 @@ export const EditUserProfile = async (req, res, next) => {
     if (gender) existingUser.gender = gender;
     if (addresses) {
       try {
-        existingUser.addresses = typeof addresses === 'string' ? JSON.parse(addresses) : addresses;
+        const parsed = typeof addresses === "string" ? JSON.parse(addresses) : addresses;
+        if (Array.isArray(parsed)) {
+          // Filter out empty addresses where text fields are blank
+          const validAddresses = parsed
+            .filter(
+              (addr) =>
+                addr &&
+                (addr.address?.trim() ||
+                  addr.city?.trim() ||
+                  addr.pincode?.trim() ||
+                  addr.state?.trim())
+            )
+            .map((addr) => ({
+              address: addr.address?.trim() || "",
+              city: addr.city?.trim() || "Bhopal",
+              state: addr.state?.trim() || "Madhya Pradesh",
+              pincode: addr.pincode?.trim() || "462001",
+              country: addr.country?.trim() || "India",
+              isDefault: Boolean(addr.isDefault),
+            }));
+
+          existingUser.addresses = validAddresses;
+        }
       } catch (e) {
-        // Fallback or leave as is if parsing fails
+        console.warn("Addresses parsing error in EditUserProfile:", e.message);
       }
     }
 
     await existingUser.save();
 
+    const safeUser = existingUser.toObject();
+    delete safeUser.password;
+
     res
       .status(200)
-      .json({ message: "User Updated Sucessfully", data: existingUser });
+      .json({ message: "User Updated Sucessfully", data: safeUser });
   } catch (error) {
     next(error);
   }
@@ -73,7 +104,19 @@ export const UpdateUserPassword = async (req, res, next) => {
       error.statusCode = 400;
       return next(error);
     }
-    const currentUser = req.user;
+    const userId = req.user?._id;
+    if (!userId) {
+      const error = new Error("Unauthorized");
+      error.statusCode = 401;
+      return next(error);
+    }
+
+    const currentUser = await User.findById(userId).select("+password");
+    if (!currentUser) {
+      const error = new Error("User not found");
+      error.statusCode = 404;
+      return next(error);
+    }
 
     // Check if 24 hours have passed since the last password change
     if (currentUser.lastPasswordChange) {

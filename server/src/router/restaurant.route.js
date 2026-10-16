@@ -16,6 +16,16 @@ router.post(
   restaurantUpdateProfile,
 );
 
+router.patch(
+  "/update-profile",
+  RestaurantAuthProtect,
+  upload.fields([
+    { name: "coverImage", maxCount: 1 },
+    { name: "restaurantImage", maxCount: 10 },
+  ]),
+  restaurantUpdateProfile,
+);
+
 router.get("/get-profile", RestaurantAuthProtect, getRestaurantProfile);
 router.patch("/toggle-status", RestaurantAuthProtect, toggleRestaurantStatus);
 

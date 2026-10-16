@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { IoIosCloseCircleOutline } from "react-icons/io";
 import { LuLoaderCircle } from "react-icons/lu";
 import { FaEnvelope, FaKey, FaShieldAlt, FaLockOpen } from "react-icons/fa";
@@ -16,6 +16,19 @@ const ForgotPasswordModal = ({ open, onClose }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [isOtpSent, setIsOtpSent] = useState(false);
   const [isOtpVerified, setIsOtpVerified] = useState(false);
+  const [timer, setTimer] = useState(0);
+
+  useEffect(() => {
+    let interval = null;
+    if (timer > 0) {
+      interval = setInterval(() => {
+        setTimer((prev) => prev - 1);
+      }, 1000);
+    }
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [timer]);
 
   const handleCloseModal = () => {
     onClose();
@@ -27,6 +40,7 @@ const ForgotPasswordModal = ({ open, onClose }) => {
     });
     setIsOtpSent(false);
     setIsOtpVerified(false);
+    setTimer(0);
   };
 
   const handleChange = (e) => {
@@ -34,31 +48,77 @@ const ForgotPasswordModal = ({ open, onClose }) => {
     setFormData((prevData) => ({ ...prevData, [name]: value }));
   };
 
+  const handleResendOtp = async () => {
+    if (timer > 0 || isLoading) return;
+    try {
+      setIsLoading(true);
+      const res = await api.post("/auth/send-otp", {
+        email: formData.email.trim().toLowerCase(),
+      });
+      toast.success(res.data.message || "A new OTP has been sent successfully!");
+      setFormData((prev) => ({ ...prev, otp: "" }));
+      setTimer(60);
+    } catch (error) {
+      toast.error(
+        error.response?.data?.message || "Failed to resend OTP. Please try again.",
+      );
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const handleResetPassword = async () => {
     try {
       setIsLoading(true);
       if (!isOtpSent) {
-        const res = await api.post("/auth/send-otp", formData);
+        if (!formData.email.trim()) {
+          toast.error("Please enter your registered email.");
+          return;
+        }
+        const res = await api.post("/auth/send-otp", {
+          email: formData.email.trim().toLowerCase(),
+        });
         toast.success(res.data.message);
+        setFormData((prev) => ({ ...prev, otp: "" }));
         setIsOtpSent(true);
+        setTimer(60);
+        return;
       }
 
       if (isOtpSent && !isOtpVerified) {
-        const res = await api.post("/auth/verify-otp", formData);
+        if (!formData.otp.trim()) {
+          toast.error("Please enter the 6-digit OTP.");
+          return;
+        }
+        if (timer === 0) {
+          toast.error("The OTP has expired! The old OTP will no longer work; please resend the OTP.");
+          return;
+        }
+        const res = await api.post("/auth/verify-otp", {
+          email: formData.email.trim().toLowerCase(),
+          otp: formData.otp.trim(),
+        });
         toast.success(res.data.message);
         setIsOtpVerified(true);
+        return;
       }
+
       if (isOtpSent && isOtpVerified) {
+        if (!formData.newPassword) {
+          toast.error("Please enter a new password.");
+          return;
+        }
         // Check if both passwords match
         if (formData.newPassword !== formData.confirmNewPassword) {
           toast.error("New Password and Confirm Password do not match.");
           return;
         }
 
-        const res = await api.post("/auth/reset-password", formData);
+        const res = await api.post("/auth/reset-password", {
+          newPassword: formData.newPassword,
+        });
 
         toast.success(res.data.message);
-
         handleCloseModal();
       }
     } catch (error) {
@@ -120,21 +180,54 @@ const ForgotPasswordModal = ({ open, onClose }) => {
           </div>
 
           {/* OTP Step */}
-          {isOtpSent && (
-            <div className="relative group animate-in slide-in-from-top-4 duration-300">
-              <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-gray-400 group-focus-within:text-(--color-primary) transition-colors">
-                <FaShieldAlt />
+          {isOtpSent && !isOtpVerified && (
+            <div className="space-y-3 animate-in slide-in-from-top-4 duration-300">
+              <div className="relative group">
+                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-gray-400 group-focus-within:text-(--color-primary) transition-colors">
+                  <FaShieldAlt />
+                </div>
+                <input
+                  type="text"
+                  id="otp"
+                  name="otp"
+                  maxLength={6}
+                  placeholder="Enter 6-digit OTP"
+                  value={formData.otp}
+                  onChange={handleChange}
+                  className="w-full pl-11 pr-4 py-3.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-(--color-primary) focus:border-transparent outline-none transition-all font-medium text-gray-800 dark:text-gray-100 shadow-sm tracking-widest disabled:opacity-70 disabled:bg-gray-100 dark:disabled:bg-gray-900 text-center font-mono text-lg font-bold"
+                  disabled={isLoading}
+                />
               </div>
-              <input
-                type="text"
-                id="otp"
-                name="otp"
-                placeholder="Enter 6-digit OTP"
-                value={formData.otp}
-                onChange={handleChange}
-                className="w-full pl-11 pr-4 py-3.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-(--color-primary) focus:border-transparent outline-none transition-all font-medium text-gray-800 dark:text-gray-100 shadow-sm tracking-widest disabled:opacity-70 disabled:bg-gray-100 dark:disabled:bg-gray-900"
-                disabled={isLoading || isOtpVerified}
-              />
+
+              {/* 60s Countdown / Resend OTP Action */}
+              <div className="flex items-center justify-between text-xs px-1 text-gray-500 dark:text-gray-400">
+                <span>{timer > 0 ? "OTP valid for:" : "Status:"}</span>
+                {timer > 0 ? (
+                  <span className="font-semibold text-orange-600 dark:text-orange-400 bg-orange-100/70 dark:bg-orange-950/50 px-2.5 py-1 rounded-full border border-orange-200 dark:border-orange-800/60 flex items-center gap-1.5 shadow-xs">
+                    <span className="inline-block w-2 h-2 rounded-full bg-orange-500 animate-ping"></span>
+                    {timer < 10 ? `0${timer}` : timer}s remaining
+                  </span>
+                ) : (
+                  <div className="flex items-center gap-2">
+                    <span className="text-red-500 font-bold bg-red-100 dark:bg-red-950/50 px-2 py-0.5 rounded-md border border-red-200 dark:border-red-900/60">
+                      ⚠️ Expired
+                    </span>
+                    <button
+                      type="button"
+                      onClick={handleResendOtp}
+                      disabled={isLoading}
+                      className="font-bold text-(--color-primary) hover:underline cursor-pointer transition-colors"
+                    >
+                      Resend New OTP
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              {/* Spam/Junk Folder Notice */}
+              <div className="p-2.5 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/60 rounded-xl text-[11px] text-amber-800 dark:text-amber-300 leading-relaxed">
+                💡 <strong>Email Check:</strong> If you do not see the email in your Inbox, please check your <strong>Spam / Junk</strong> folder or <strong>Promotions</strong> tab!
+              </div>
             </div>
           )}
 
