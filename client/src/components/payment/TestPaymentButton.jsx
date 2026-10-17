@@ -4,7 +4,7 @@ import toast from "react-hot-toast";
 import { loadRazorpayScript } from "../../utils/loadRazorpay";
 
 // Assuming VITE_API_URL or standard origin proxy
-const API_URL = import.meta.env.VITE_API_BASE_URL || import.meta.env.VITE_API_URL || "https://craving-vn.onrender.com";
+const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
 
 const TestPaymentButton = ({ amount = 100 }) => {
   const [loading, setLoading] = useState(false);
