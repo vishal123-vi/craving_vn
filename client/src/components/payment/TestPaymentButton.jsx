@@ -4,7 +4,7 @@ import toast from "react-hot-toast";
 import { loadRazorpayScript } from "../../utils/loadRazorpay";
 
 // Server API URL
-const API_URL = import.meta.env.VITE_SERVER_URL || import.meta.env.VITE_API_URL || import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
+const API_URL = import.meta.env.VITE_SERVER_URL || import.meta.env.VITE_API_URL || import.meta.env.VITE_API_BASE_URL || "https://craving-vn.onrender.com";
 
 const TestPaymentButton = ({ amount = 100 }) => {
   const [loading, setLoading] = useState(false);
