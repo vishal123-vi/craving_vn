@@ -39,8 +39,9 @@ app.use(compression());
 const allowedOrigins = [
   "http://localhost:5173",
 ];
-if (process.env.FRONTEND_URL) {
-  allowedOrigins.push(process.env.FRONTEND_URL.trim());
+const clientUrl = process.env.CLIENT_URL || process.env.FRONTEND_URL;
+if (clientUrl) {
+  allowedOrigins.push(clientUrl.trim());
 }
 
 app.use(
