@@ -38,10 +38,18 @@ app.use(compression());
 // CORS configuration
 const allowedOrigins = [
   "http://localhost:5173",
+  "http://localhost:3000",
+  "http://127.0.0.1:5173",
+  "https://craving-vn.netlify.app",
 ];
 const clientUrl = process.env.CLIENT_URL;
 if (clientUrl) {
-  allowedOrigins.push(clientUrl.trim());
+  clientUrl.split(",").forEach((url) => {
+    const trimmed = url.trim();
+    if (trimmed && !allowedOrigins.includes(trimmed)) {
+      allowedOrigins.push(trimmed);
+    }
+  });
 }
 
 app.use(
