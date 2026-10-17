@@ -236,31 +236,26 @@ const Navbar = () => {
           throw new Error("Failed to create order");
         }
 
-        const configRes = await api.get("/payment/config-status");
-        const isConfigured = configRes.data?.isConfigured || configRes.data?.configured;
-
-        if (!isConfigured) {
-          // Open UPI Modal in Development Sandbox / Simulator mode
+        try {
+          const paymentOrderRes = await api.post("/payment/create-order", {
+            orderId: appOrderId,
+            isUpi: true,
+          });
+          const paymentData = paymentOrderRes?.data?.data;
+          setCurrentPaymentData(paymentData);
+          setIsGatewayConfigured(!paymentData?.isSimulated);
+          setUpiQrData(paymentData?.qrData || null);
+          setUpiOrderData(createOrderRes.data.data);
+          setIsCartOpen(false);
+          return;
+        } catch (upiErr) {
+          console.warn("Falling back to local UPI modal:", upiErr);
           setIsGatewayConfigured(false);
           setUpiQrData(null);
           setUpiOrderData(createOrderRes.data.data);
           setIsCartOpen(false);
           return;
         }
-
-        // Live/Test Razorpay Gateway configured
-        const paymentOrderRes = await api.post("/payment/create-order", {
-          orderId: appOrderId,
-          isUpi: true,
-        });
-        const paymentData = paymentOrderRes?.data?.data;
-        setCurrentPaymentData(paymentData);
-        setIsGatewayConfigured(true);
-
-        setUpiQrData(paymentData?.qrData || null);
-        setUpiOrderData(createOrderRes.data.data);
-        setIsCartOpen(false);
-        return;
       }
 
       // Case 3: Cards / Netbanking Online Payment
@@ -278,20 +273,22 @@ const Navbar = () => {
         throw new Error("Failed to create order");
       }
 
-      const configRes = await api.get("/payment/config-status");
-      const isConfigured = configRes.data?.isConfigured || configRes.data?.configured;
+      try {
+        const paymentOrderRes = await api.post("/payment/create-order", { orderId: appOrderId, isUpi: false });
+        const paymentData = paymentOrderRes?.data?.data;
+        setCurrentPaymentData(paymentData);
+        setIsCartOpen(false);
 
-      if (!isConfigured) {
+        if (paymentData?.isSimulated) {
+          setSandboxOrderData(createOrderRes.data.data);
+        } else {
+          launchRazorpayCheckout(appOrderId, paymentData, false);
+        }
+      } catch (cardErr) {
+        console.warn("Falling back to sandbox payment modal:", cardErr);
         setSandboxOrderData(createOrderRes.data.data);
         setIsCartOpen(false);
-        return;
       }
-
-      const paymentOrderRes = await api.post("/payment/create-order", { orderId: appOrderId, isUpi: false });
-      const paymentData = paymentOrderRes?.data?.data;
-      setCurrentPaymentData(paymentData);
-      setIsCartOpen(false);
-      launchRazorpayCheckout(appOrderId, paymentData, false);
     } catch (error) {
       toast.error(error.response?.data?.message || "Something went wrong placing the order");
     } finally {
@@ -564,10 +561,10 @@ const Navbar = () => {
         isOpen={!!upiOrderData}
         orderData={upiOrderData}
         qrData={upiQrData}
-        isConfigured={isGatewayConfigured}
+        isConfigured={isGatewayConfigured && !currentPaymentData?.isSimulated}
         onClose={() => setUpiOrderData(null)}
         onLaunchRazorpayUpi={() => {
-          if (upiOrderData?._id && currentPaymentData) {
+          if (upiOrderData?._id && currentPaymentData && !currentPaymentData?.isSimulated) {
             launchRazorpayCheckout(upiOrderData._id, currentPaymentData, true);
           }
         }}
