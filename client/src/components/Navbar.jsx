@@ -72,19 +72,22 @@ const Navbar = () => {
     try {
       const res = await api.get("/auth/logout");
       toast.success(res.data.message);
-
-      sessionStorage.removeItem("cravingUser");
-      sessionStorage.removeItem("token");
-      localStorage.removeItem("token");
-      setUser(null);
-      setIsLogin(false);
-      setRole(null);
-      navigate("/");
     } catch (error) {
       toast.error(
         error.response?.data?.message ||
         "Unknown error occurred during logout. Please try again.",
       );
+    } finally {
+      sessionStorage.removeItem("cravingUser");
+      sessionStorage.removeItem("token");
+      localStorage.removeItem("token");
+      localStorage.removeItem("cravingsCart");
+      clearCart();
+      setIsCartOpen(false);
+      setUser(null);
+      setIsLogin(false);
+      setRole(null);
+      navigate("/");
     }
   };
 
@@ -305,7 +308,7 @@ const Navbar = () => {
           </Link>
         </div>
         <div className="flex items-center gap-4 h-full">
-          {totalItems > 0 && (
+          {isLogin && totalItems > 0 && (
             <button
               onClick={() => setIsCartOpen(true)}
               className="relative p-2 text-white hover:bg-white/10 rounded-full transition-colors flex items-center justify-center focus:outline-none"

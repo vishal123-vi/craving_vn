@@ -10,6 +10,8 @@ export const CartProvider = ({ children }) => {
   const { user } = useAuth();
   const [cart, setCart] = useState(() => {
     try {
+      const storedUser = sessionStorage.getItem("cravingUser");
+      if (!storedUser) return [];
       const storedCart = localStorage.getItem("cravingsCart");
       return storedCart ? JSON.parse(storedCart) : [];
     } catch (e) {
@@ -17,9 +19,21 @@ export const CartProvider = ({ children }) => {
     }
   });
 
+  // Automatically clear cart when user logs out
   useEffect(() => {
-    localStorage.setItem("cravingsCart", JSON.stringify(cart));
-  }, [cart]);
+    if (!user) {
+      setCart([]);
+      localStorage.removeItem("cravingsCart");
+    }
+  }, [user]);
+
+  useEffect(() => {
+    if (user && cart.length > 0) {
+      localStorage.setItem("cravingsCart", JSON.stringify(cart));
+    } else if (!user || cart.length === 0) {
+      localStorage.removeItem("cravingsCart");
+    }
+  }, [cart, user]);
 
   const getCartQuantity = (itemId) => {
     const cartItem = cart.find((c) => c.item._id === itemId);
@@ -81,6 +95,7 @@ export const CartProvider = ({ children }) => {
 
   const clearCart = () => {
     setCart([]);
+    localStorage.removeItem("cravingsCart");
   };
 
   const totalItems = cart.reduce((acc, curr) => acc + curr.quantity, 0);
