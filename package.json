@@ -15,6 +15,9 @@
   "devDependencies": {
     "concurrently": "^9.1.2"
   },
+  "engines": {
+    "node": ">=18.0.0"
+  },
   "author": "Vishal Tiwari",
   "license": "ISC"
 }
