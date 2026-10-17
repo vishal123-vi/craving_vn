@@ -1,7 +1,17 @@
 import axios from "axios";
 
+// Automatically use local server when running on localhost, and Render server in production
+const isLocalhost =
+  typeof window !== "undefined" &&
+  (window.location.hostname === "localhost" ||
+    window.location.hostname === "127.0.0.1");
+
+const baseURL = isLocalhost
+  ? "http://localhost:5000"
+  : (import.meta.env.VITE_SERVER_URL || import.meta.env.VITE_API_BASE_URL || "https://craving-vn.onrender.com");
+
 const api = axios.create({
-  baseURL: import.meta.env.VITE_SERVER_URL || import.meta.env.VITE_API_BASE_URL || "https://craving-vn.onrender.com",
+  baseURL,
   withCredentials: true,
 });
 

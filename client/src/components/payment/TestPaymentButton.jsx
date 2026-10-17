@@ -3,8 +3,15 @@ import axios from "axios";
 import toast from "react-hot-toast";
 import { loadRazorpayScript } from "../../utils/loadRazorpay";
 
-// Server API URL
-const API_URL = import.meta.env.VITE_SERVER_URL || import.meta.env.VITE_API_URL || import.meta.env.VITE_API_BASE_URL || "https://craving-vn.onrender.com";
+// Server API URL (auto-detects localhost vs production)
+const isLocalhost =
+  typeof window !== "undefined" &&
+  (window.location.hostname === "localhost" ||
+    window.location.hostname === "127.0.0.1");
+
+const API_URL = isLocalhost
+  ? "http://localhost:5000"
+  : (import.meta.env.VITE_SERVER_URL || import.meta.env.VITE_API_URL || import.meta.env.VITE_API_BASE_URL || "https://craving-vn.onrender.com");
 
 const TestPaymentButton = ({ amount = 100 }) => {
   const [loading, setLoading] = useState(false);
