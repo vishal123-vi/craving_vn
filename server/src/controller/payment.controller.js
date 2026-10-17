@@ -39,7 +39,7 @@ const getCustomerOrder = async (userId, orderId) => {
 };
 
 // ─── GET /payment/config-status ─────────────────────────────────────────────
-// Informs frontend whether Razorpay keys are configured without exposing secrets
+// Informs client whether Razorpay keys are configured without exposing secrets
 export const GetPaymentConfigStatus = async (req, res) => {
   const configured = isRazorpayConfigured();
   return res.status(200).json({

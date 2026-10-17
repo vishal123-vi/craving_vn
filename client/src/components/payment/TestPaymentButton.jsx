@@ -3,8 +3,8 @@ import axios from "axios";
 import toast from "react-hot-toast";
 import { loadRazorpayScript } from "../../utils/loadRazorpay";
 
-// Assuming VITE_API_URL or standard origin proxy
-const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
+// Server API URL
+const API_URL = import.meta.env.VITE_SERVER_URL || import.meta.env.VITE_API_URL || import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
 
 const TestPaymentButton = ({ amount = 100 }) => {
   const [loading, setLoading] = useState(false);
@@ -21,7 +21,7 @@ const TestPaymentButton = ({ amount = 100 }) => {
         return;
       }
 
-      // 2. Call backend to create order
+      // 2. Call server to create order
       const orderResponse = await axios.post(
         `${API_URL}/payment/create-order`,
         { amount },

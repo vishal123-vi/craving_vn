@@ -26,7 +26,7 @@ A modern, responsive, and comprehensive Full-Stack Food Delivery platform built 
 
 ## 🏗️ Architecture & Tech Stack
 
-### Frontend (`/client`)
+### Client (`/client`)
 - **Framework**: [React 19](https://react.dev/) + [Vite](https://vitejs.dev/)
 - **Styling**: [Tailwind CSS v4](https://tailwindcss.com/)
 - **Routing**: [React Router DOM v7](https://reactrouter.com/)
@@ -35,7 +35,7 @@ A modern, responsive, and comprehensive Full-Stack Food Delivery platform built 
 - **Notifications & UI**: `react-hot-toast`, `react-icons`
 - **PDF Generation**: `jspdf`, `html2canvas`
 
-### Backend (`/server`)
+### Server (`/server`)
 - **Runtime & Framework**: [Node.js](https://nodejs.org/) + [Express 5](https://expressjs.com/)
 - **Database**: [MongoDB](https://www.mongodb.com/) via [Mongoose ODM](https://mongoosejs.com/)
 - **Authentication**: JWT (`jsonwebtoken`) + HTTP-only cookies + `bcrypt`
@@ -49,7 +49,7 @@ A modern, responsive, and comprehensive Full-Stack Food Delivery platform built 
 
 ```text
 cravings_vn/
-├── client/                     # Frontend React 19 + Vite Application
+├── client/                     # Client React 19 + Vite Application
 │   ├── public/                 # Static public assets
 │   ├── src/
 │   │   ├── assets/             # Images, logos, loaders
@@ -63,7 +63,7 @@ cravings_vn/
 │   ├── .env.example            # Client env template
 │   └── package.json
 │
-├── server/                     # Backend Express REST API
+├── server/                     # Server Express REST API
 │   ├── src/
 │   │   ├── config/             # MongoDB, Cloudinary, Razorpay, Nodemailer configs
 │   │   ├── controller/         # Auth, Order, Menu, Restaurant, Pool, Payment controllers
